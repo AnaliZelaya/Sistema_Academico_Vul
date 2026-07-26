@@ -1,38 +1,49 @@
 {% extends "base.html" %}
 {% block title %}Notas{% endblock %}
 {% block content %}
-<h2>Gestion de Notas</h2>
+<div class="page-header">
+    <h2>Gestion de Notas</h2>
+</div>
 
 <!-- Formulario crear nota -->
-<div class="card mb-4">
-    <div class="card-header">Registrar Nota</div>
+<div class="card form-card">
+    <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Registrar Nota
+    </div>
     <div class="card-body">
         <form method="POST" action="{{ url_for('crear_nota') }}">
-            <div class="row">
+            <div class="row g-3">
                 <div class="col-md-3">
+                    <label class="form-label">Estudiante</label>
                     <select class="form-select" name="estudiante_id" required>
-                        <option value="">Seleccionar estudiante</option>
+                        <option value="">Seleccionar</option>
                         {% for est in estudiantes %}
                         <option value="{{ est.id }}">{{ est.nombre }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-3">
+                    <label class="form-label">Curso</label>
                     <select class="form-select" name="curso_id" required>
-                        <option value="">Seleccionar curso</option>
+                        <option value="">Seleccionar</option>
                         {% for curso in cursos %}
                         <option value="{{ curso.id }}">{{ curso.nombre }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-1">
-                    <input type="number" step="0.1" min="0" max="20" class="form-control" name="nota" placeholder="Nota" required>
+                <div class="col-md-2">
+                    <label class="form-label">Nota (0-20)</label>
+                    <input type="number" step="0.1" min="0" max="20" class="form-control" name="nota" placeholder="Ej: 16.5" required>
                 </div>
                 <div class="col-md-2">
-                    <input type="text" class="form-control" name="ciclo" placeholder="Ciclo (2026-I)" required>
+                    <label class="form-label">Ciclo</label>
+                    <input type="text" class="form-control" name="ciclo" placeholder="2026-I" required maxlength="20">
                 </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-success w-100">Registrar</button>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-secure w-100">Registrar</button>
                 </div>
             </div>
         </form>
@@ -40,33 +51,71 @@
 </div>
 
 <!-- Tabla de notas -->
-<div class="card">
-    <div class="card-header">Lista de Notas</div>
+<div class="card table-card">
+    <div class="card-header">
+        Lista de Notas
+        <span class="badge badge-primary" style="margin-left:8px;">{{ notas|length }}</span>
+    </div>
     <div class="card-body">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Estudiante</th>
-                    <th>Curso</th>
-                    <th>Nota</th>
-                    <th>Ciclo</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for nota in notas %}
-                <tr>
-                    <td>{{ nota.estudiante_nombre }}</td>
-                    <td>{{ nota.curso_nombre }} ({{ nota.curso_codigo }})</td>
-                    <td>{{ nota.nota }}</td>
-                    <td>{{ nota.ciclo }}</td>
-                    <td>
-                        <a href="{{ url_for('eliminar_nota', id=nota.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Eliminar esta nota?')">Eliminar</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% if notas %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Estudiante</th>
+                        <th>Curso</th>
+                        <th>Codigo</th>
+                        <th style="width:100px;">Nota</th>
+                        <th>Ciclo</th>
+                        <th>Estado</th>
+                        <th style="width:80px;">Accion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for nota in notas %}
+                    {% set nota_val = nota.nota %}
+                    {% if nota_val >= 14 %}
+                        {% set grade_class = 'grade-high' %}
+                        {% set badge_text = 'Aprobado' %}
+                        {% set badge_type = 'badge-secure' %}
+                    {% elif nota_val >= 10.5 %}
+                        {% set grade_class = 'grade-medium' %}
+                        {% set badge_text = 'Observado' %}
+                        {% set badge_type = 'badge-neutral' %}
+                    {% else %}
+                        {% set grade_class = 'grade-low' %}
+                        {% set badge_text = 'Desaprobado' %}
+                        {% set badge_type = 'badge-vulnerable' %}
+                    {% endif %}
+                    <tr>
+                        <td><strong>{{ nota.estudiante_nombre }}</strong></td>
+                        <td>{{ nota.curso_nombre }}</td>
+                        <td><span class="badge badge-neutral">{{ nota.curso_codigo }}</span></td>
+                        <td class="grade-cell {{ grade_class }}">{{ "%.1f"|format(nota_val) }}</td>
+                        <td>{{ nota.ciclo }}</td>
+                        <td><span class="badge {{ badge_type }}">{{ badge_text }}</span></td>
+                        <td>
+                            <a href="{{ url_for('eliminar_nota', id=nota.id) }}" class="btn btn-vulnerable btn-sm" onclick="return confirm('Eliminar esta nota?')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;">
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+            </div>
+            <p>No se encontraron notas registradas</p>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

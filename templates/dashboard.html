@@ -1,40 +1,54 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<h2>Dashboard</h2>
-<p>Bienvenido, <strong>{{ session.username }}</strong></p>
+<div class="page-header">
+    <h2>Dashboard</h2>
+    <p class="page-subtitle">Bienvenido, <strong>{{ session.username }}</strong></p>
+</div>
 
-<div class="row mt-4">
+<div class="row g-3">
     <div class="col-md-3">
-        <div class="card text-bg-primary">
-            <div class="card-body text-center">
-                <h3>{{ total_estudiantes }}</h3>
-                <p>Estudiantes</p>
+        <div class="stat-card stat-primary">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                </svg>
             </div>
+            <div class="stat-number">{{ total_estudiantes }}</div>
+            <div class="stat-label">Estudiantes</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-bg-success">
-            <div class="card-body text-center">
-                <h3>{{ total_cursos }}</h3>
-                <p>Cursos</p>
+        <div class="stat-card stat-secondary">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
             </div>
+            <div class="stat-number">{{ total_cursos }}</div>
+            <div class="stat-label">Cursos</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-bg-warning">
-            <div class="card-body text-center">
-                <h3>{{ total_notas }}</h3>
-                <p>Notas</p>
+        <div class="stat-card stat-tertiary">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
             </div>
+            <div class="stat-number">{{ total_notas }}</div>
+            <div class="stat-label">Notas</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-bg-info">
-            <div class="card-body text-center">
-                <h3>{{ total_archivos }}</h3>
-                <p>Archivos</p>
+        <div class="stat-card stat-neutral">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
             </div>
+            <div class="stat-number">{{ total_archivos }}</div>
+            <div class="stat-label">Archivos</div>
         </div>
     </div>
 </div>
