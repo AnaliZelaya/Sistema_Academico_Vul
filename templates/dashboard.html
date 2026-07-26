@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h2>Dashboard</h2>
+<p>Bienvenido, <strong>{{ session.username }}</strong></p>
+
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-bg-primary">
+            <div class="card-body text-center">
+                <h3>{{ total_estudiantes }}</h3>
+                <p>Estudiantes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-success">
+            <div class="card-body text-center">
+                <h3>{{ total_cursos }}</h3>
+                <p>Cursos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-warning">
+            <div class="card-body text-center">
+                <h3>{{ total_notas }}</h3>
+                <p>Notas</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-info">
+            <div class="card-body text-center">
+                <h3>{{ total_archivos }}</h3>
+                <p>Archivos</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

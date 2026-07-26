@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Archivos{% endblock %}
+{% block content %}
+<h2>Gestion de Archivos</h2>
+
+<!-- Formulario subir archivo -->
+<div class="card mb-4">
+    <div class="card-header">Subir Archivo</div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('subir_archivo') }}" enctype="multipart/form-data">
+            <div class="row">
+                <div class="col-md-8">
+                    <!-- VULNERABLE: Sin accept que restrinja tipo de archivo -->
+                    <input type="file" class="form-control" name="archivo" required>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success w-100">Subir Archivo</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de archivos -->
+<div class="card">
+    <div class="card-header">Archivos Subidos</div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre Original</th>
+                    <th>Subido por</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for arch in archivos %}
+                <tr>
+                    <td>{{ arch.id }}</td>
+                    <td>{{ arch.nombre_original }}</td>
+                    <td>{{ arch.subido_por_nombre or 'Desconocido' }}</td>
+                    <td>
+                        <!-- VULNERABLE: Path traversal posible -->
+                        <a href="{{ url_for('descargar_archivo', filename=arch.nombre_original) }}" class="btn btn-sm btn-primary">Descargar</a>
+                        <a href="{{ url_for('eliminar_archivo', id=arch.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Eliminar este archivo?')">Eliminar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

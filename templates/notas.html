@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Notas{% endblock %}
+{% block content %}
+<h2>Gestion de Notas</h2>
+
+<!-- Formulario crear nota -->
+<div class="card mb-4">
+    <div class="card-header">Registrar Nota</div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('crear_nota') }}">
+            <div class="row">
+                <div class="col-md-3">
+                    <select class="form-select" name="estudiante_id" required>
+                        <option value="">Seleccionar estudiante</option>
+                        {% for est in estudiantes %}
+                        <option value="{{ est.id }}">{{ est.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="curso_id" required>
+                        <option value="">Seleccionar curso</option>
+                        {% for curso in cursos %}
+                        <option value="{{ curso.id }}">{{ curso.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <input type="number" step="0.1" min="0" max="20" class="form-control" name="nota" placeholder="Nota" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control" name="ciclo" placeholder="Ciclo (2026-I)" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success w-100">Registrar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de notas -->
+<div class="card">
+    <div class="card-header">Lista de Notas</div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Estudiante</th>
+                    <th>Curso</th>
+                    <th>Nota</th>
+                    <th>Ciclo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for nota in notas %}
+                <tr>
+                    <td>{{ nota.estudiante_nombre }}</td>
+                    <td>{{ nota.curso_nombre }} ({{ nota.curso_codigo }})</td>
+                    <td>{{ nota.nota }}</td>
+                    <td>{{ nota.ciclo }}</td>
+                    <td>
+                        <a href="{{ url_for('eliminar_nota', id=nota.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Eliminar esta nota?')">Eliminar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

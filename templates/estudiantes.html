@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Estudiantes{% endblock %}
+{% block content %}
+<h2>Gestion de Estudiantes</h2>
+
+<!-- Buscador VULNERABLE a SQL Injection -->
+<div class="card mb-4">
+    <div class="card-header">Buscar Estudiante</div>
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('estudiantes') }}">
+            <div class="input-group">
+                <input type="text" class="form-control" name="buscar" value="{{ buscar }}" placeholder="Buscar por nombre o email...">
+                <button class="btn btn-primary" type="submit">Buscar</button>
+                {% if buscar %}
+                <a href="{{ url_for('estudiantes') }}" class="btn btn-secondary">Limpiar</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Formulario crear estudiante -->
+<div class="card mb-4">
+    <div class="card-header">Agregar Estudiante</div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('crear_estudiante') }}">
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" name="nombre" placeholder="Nombre completo" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="email" class="form-control" name="email" placeholder="Email" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control" name="carrera" placeholder="Carrera" required>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-success w-100">Agregar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de estudiantes -->
+<div class="card">
+    <div class="card-header">Lista de Estudiantes</div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Carrera</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for est in estudiantes %}
+                <tr>
+                    <td>{{ est.id }}</td>
+                    <td>{{ est.nombre }}</td>
+                    <td>{{ est.email }}</td>
+                    <td>{{ est.carrera }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modal{{ est.id }}">Editar</button>
+                        <a href="{{ url_for('eliminar_estudiante', id=est.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Eliminar este estudiante?')">Eliminar</a>
+                    </td>
+                </tr>
+
+                <!-- Modal editar -->
+                <div class="modal fade" id="modal{{ est.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" action="{{ url_for('editar_estudiante', id=est.id) }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Editar Estudiante</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Nombre</label>
+                                        <input type="text" class="form-control" name="nombre" value="{{ est.nombre }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Email</label>
+                                        <input type="email" class="form-control" name="email" value="{{ est.email }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Carrera</label>
+                                        <input type="text" class="form-control" name="carrera" value="{{ est.carrera }}" required>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Guardar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
