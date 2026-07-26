@@ -1,57 +1,110 @@
 {% extends "base.html" %}
 {% block title %}Archivos{% endblock %}
 {% block content %}
-<h2>Gestion de Archivos</h2>
+<div class="page-header">
+    <h2>Gestion de Archivos</h2>
+</div>
 
-<!-- Formulario subir archivo SEGURO -->
-<div class="card mb-4">
-    <div class="card-header">Subir Archivo</div>
+<div class="card form-card">
+    <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Subir Archivo
+    </div>
     <div class="card-body">
         <form method="POST" action="{{ url_for('subir_archivo') }}" enctype="multipart/form-data">
-            <div class="row">
-                <div class="col-md-8">
-                    <!-- CORRECCION: accept restringe tipos permitidos -->
+            <div class="row g-3">
+                <div class="col-md-9">
+                    <label class="form-label">Seleccionar archivo</label>
                     <input type="file" class="form-control" name="archivo"
-                           accept=".pdf,.png,.jpg,.jpeg,.gif,.docx,.xlsx,.txt,.csv"
-                           required>
-                    <small class="text-muted">Tipos permitidos: PDF, PNG, JPG, GIF, DOCX, XLSX, TXT, CSV. Maximo 5MB.</small>
+                           accept=".pdf,.png,.jpg,.jpeg,.gif,.docx,.xlsx,.txt,.csv" required>
+                    <small style="font-size:12px;color:var(--text-muted);">
+                        Tipos permitidos: PDF, PNG, JPG, GIF, DOCX, XLSX, TXT, CSV. Maximo 5MB.
+                    </small>
                 </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn btn-success w-100">Subir Archivo</button>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Subir Archivo</button>
                 </div>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Tabla de archivos -->
-<div class="card">
-    <div class="card-header">Archivos Subidos</div>
+<div class="card table-card">
+    <div class="card-header">
+        Archivos Subidos
+        <span class="badge badge-primary" style="margin-left:8px;">{{ archivos|length }}</span>
+    </div>
     <div class="card-body">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre Original</th>
-                    <th>Subido por</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for arch in archivos %}
-                <tr>
-                    <td>{{ arch.id }}</td>
-                    <td>{{ arch.nombre_original }}</td>
-                    <td>{{ arch.subido_por_nombre or 'Desconocido' }}</td>
-                    <td>
-                        <!-- CORRECCION: Descarga segura con validacion -->
-                        <a href="{{ url_for('descargar_archivo', filename=arch.nombre_guardado) }}" class="btn btn-sm btn-primary">Descargar</a>
-                        <a href="{{ url_for('eliminar_archivo', id=arch.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Eliminar este archivo?')">Eliminar</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% if archivos %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Archivo</th>
+                        <th>Tipo</th>
+                        <th>Subido por</th>
+                        <th style="width:160px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for arch in archivos %}
+                    {% set ext = arch.nombre_original.split('.')[-1]|lower %}
+                    {% if ext in ('pdf',) %}
+                        {% set icon_class = 'pdf' %}
+                        {% set icon_emoji = 'PDF' %}
+                    {% elif ext in ('png', 'jpg', 'jpeg', 'gif') %}
+                        {% set icon_class = 'image' %}
+                        {% set icon_emoji = 'IMG' %}
+                    {% elif ext in ('docx', 'doc') %}
+                        {% set icon_class = 'doc' %}
+                        {% set icon_emoji = 'DOC' %}
+                    {% else %}
+                        {% set icon_class = 'generic' %}
+                        {% set icon_emoji = 'FILE' %}
+                    {% endif %}
+                    <tr>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <div class="file-icon {{ icon_class }}" style="width:36px;height:36px;font-size:12px;font-weight:700;">{{ icon_emoji }}</div>
+                                <div>
+                                    <div style="font-weight:500;font-size:14px;">{{ arch.nombre_original }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="badge badge-neutral">{{ ext|upper }}</span></td>
+                        <td style="color:var(--text-secondary);font-size:14px;">{{ arch.subido_por_nombre or 'Desconocido' }}</td>
+                        <td>
+                            <a href="{{ url_for('descargar_archivo', filename=arch.nombre_guardado) }}" class="btn btn-soft btn-sm">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                Descargar
+                            </a>
+                            <a href="{{ url_for('eliminar_archivo', id=arch.id) }}" class="btn btn-vulnerable btn-sm" onclick="return confirm('Eliminar este archivo?')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;">
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                                Eliminar
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+            </div>
+            <p>No hay archivos subidos</p>
+            <small>Use el formulario de arriba para subir el primer archivo</small>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

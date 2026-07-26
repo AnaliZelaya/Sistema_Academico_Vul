@@ -12,34 +12,58 @@
 </head>
 <body>
     {% if session.get('user_id') %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">Sistema Academico</a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
-                <a class="nav-link" href="{{ url_for('estudiantes') }}">Estudiantes</a>
-                <a class="nav-link" href="{{ url_for('cursos') }}">Cursos</a>
-                <a class="nav-link" href="{{ url_for('notas') }}">Notas</a>
-                <a class="nav-link" href="{{ url_for('archivos') }}">Archivos</a>
-                <a class="nav-link text-danger" href="{{ url_for('logout') }}">Salir</a>
+    <nav class="navbar navbar-expand-lg">
+        <div class="app-container d-flex align-items-center w-100">
+            <a class="navbar-brand text-white" href="{{ url_for('dashboard') }}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Sistema Academico
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
+                        <span class="nav-link-icon">&#9632;</span> Dashboard
+                    </a>
+                    <a class="nav-link {% if request.path.startswith('/estudiantes') %}active{% endif %}" href="{{ url_for('estudiantes') }}">
+                        <span class="nav-link-icon">&#9632;</span> Estudiantes
+                    </a>
+                    <a class="nav-link {% if request.path.startswith('/cursos') %}active{% endif %}" href="{{ url_for('cursos') }}">
+                        <span class="nav-link-icon">&#9632;</span> Cursos
+                    </a>
+                    <a class="nav-link {% if request.path.startswith('/notas') %}active{% endif %}" href="{{ url_for('notas') }}">
+                        <span class="nav-link-icon">&#9632;</span> Notas
+                    </a>
+                    <a class="nav-link {% if request.path.startswith('/archivos') %}active{% endif %}" href="{{ url_for('archivos') }}">
+                        <span class="nav-link-icon">&#9632;</span> Archivos
+                    </a>
+                    <a class="nav-link text-danger" href="{{ url_for('logout') }}">
+                        <span class="nav-link-icon">&#9679;</span> Salir
+                    </a>
+                </div>
             </div>
         </div>
     </nav>
     {% endif %}
 
-    <div class="container mt-4">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+    <div class="main-content">
+        <div class="app-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
 
-        {% block content %}{% endblock %}
+            {% block content %}{% endblock %}
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

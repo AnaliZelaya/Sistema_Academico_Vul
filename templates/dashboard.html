@@ -1,39 +1,118 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<h2>Dashboard</h2>
-<p>Bienvenido, <strong>{{ session.username }}</strong></p>
+<div class="page-header">
+    <div>
+        <h2>Dashboard</h2>
+        <p class="page-subtitle">Bienvenido, <strong>{{ session.username }}</strong></p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card stat-primary">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+            </div>
+            <div class="stat-number">{{ total_estudiantes }}</div>
+            <div class="stat-label">Estudiantes</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card stat-secondary">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+            </div>
+            <div class="stat-number">{{ total_cursos }}</div>
+            <div class="stat-label">Cursos</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card stat-neutral">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+            </div>
+            <div class="stat-number">{{ total_notas }}</div>
+            <div class="stat-label">Notas</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card stat-tertiary">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15v2"/><path d="M12 13v4"/>
+                </svg>
+            </div>
+            <div class="stat-number">{{ total_archivos }}</div>
+            <div class="stat-label">Archivos</div>
+        </div>
+    </div>
+</div>
 
 <div class="row mt-4">
-    <div class="col-md-3">
-        <div class="card text-bg-primary">
-            <div class="card-body text-center">
-                <h3>{{ total_estudiantes }}</h3>
-                <p>Estudiantes</p>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Actividad Reciente</div>
+            <div class="card-body">
+                <ul class="activity-list">
+                    <li class="activity-item">
+                        <span class="activity-dot success"></span>
+                        <div class="activity-content">
+                            <div class="activity-text">Se registraron nuevas notas para el ciclo 2026-I</div>
+                            <div class="activity-time">Hoy, {{ total_notas }} registros</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <span class="activity-dot info"></span>
+                        <div class="activity-content">
+                            <div class="activity-text">Sistema iniciado - {{ total_estudiantes }} estudiantes activos</div>
+                            <div class="activity-time">Sesion actual</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <span class="activity-dot success"></span>
+                        <div class="activity-content">
+                            <div class="activity-text">Base de datos actualizada con practicas de seguridad</div>
+                            <div class="activity-time">Version 2 (SecDevOps)</div>
+                        </div>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-bg-success">
-            <div class="card-body text-center">
-                <h3>{{ total_cursos }}</h3>
-                <p>Cursos</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-bg-warning">
-            <div class="card-body text-center">
-                <h3>{{ total_notas }}</h3>
-                <p>Notas</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-bg-info">
-            <div class="card-body text-center">
-                <h3>{{ total_archivos }}</h3>
-                <p>Archivos</p>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Seguridad</div>
+            <div class="card-body">
+                <ul class="activity-list">
+                    <li class="activity-item">
+                        <span class="activity-dot success"></span>
+                        <div class="activity-content">
+                            <div class="activity-text">Queries parametrizadas activas</div>
+                            <div class="activity-time">Proteccion SQL Injection</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <span class="activity-dot success"></span>
+                        <div class="activity-content">
+                            <div class="activity-text">Passwords hasheados con bcrypt</div>
+                            <div class="activity-time">Autenticacion segura</div>
+                        </div>
+                    </li>
+                    <li class="activity-item">
+                        <span class="activity-dot success"></span>
+                        <div class="activity-content">
+                            <div class="activity-text">Headers de seguridad configurados</div>
+                            <div class="activity-time">CSP, HSTS, X-Frame-Options</div>
+                        </div>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>

@@ -1,26 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Iniciar Sesion{% endblock %}
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header bg-primary text-white text-center">
-                <h4>Iniciar Sesion</h4>
+<div class="row justify-content-center" style="margin-top: 80px;">
+    <div class="col-md-5 col-lg-4">
+        <div class="text-center mb-4">
+            <div style="width:64px;height:64px;background:var(--primary-container);border-radius:var(--radius-lg);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1a365d" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
             </div>
-            <div class="card-body">
+            <h3 style="font-size:20px;font-weight:600;color:var(--text-primary);">Sistema Academico</h3>
+            <p style="font-size:14px;color:var(--text-secondary);">Ingrese sus credenciales</p>
+        </div>
+        <div class="card" style="border-radius:var(--radius-xl);">
+            <div class="card-body" style="padding:32px;">
                 <form method="POST" action="{{ url_for('login') }}">
                     <div class="mb-3">
                         <label for="username" class="form-label">Usuario</label>
-                        <input type="text" class="form-control" id="username" name="username" required autocomplete="username">
+                        <input type="text" class="form-control" id="username" name="username" required autocomplete="username" placeholder="Ingrese su usuario">
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="password" class="form-label">Contrasena</label>
-                        <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
+                        <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password" placeholder="Ingrese su contrasena">
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+                    <button type="submit" class="btn btn-primary w-100" style="padding:10px;">Ingresar</button>
                 </form>
             </div>
         </div>
+        <p class="text-center mt-3" style="font-size:12px;color:var(--text-muted);">
+            IS040704B &middot; Seguridad Informatica &middot; 2026-I
+        </p>
     </div>
 </div>
 {% endblock %}
