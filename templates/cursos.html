@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Cursos{% endblock %}
+{% block content %}
+<h2>Gestion de Cursos</h2>
+
+<div class="card mb-4">
+    <div class="card-header">Agregar Curso</div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('crear_curso') }}">
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" name="nombre" placeholder="Nombre del curso" required maxlength="100">
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control" name="codigo" placeholder="Codigo" required maxlength="20">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control" name="creditos" placeholder="Creditos" min="1" max="10" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success w-100">Agregar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Lista de Cursos</div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Codigo</th>
+                    <th>Creditos</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for curso in cursos %}
+                <tr>
+                    <td>{{ curso.id }}</td>
+                    <td>{{ curso.nombre }}</td>
+                    <td>{{ curso.codigo }}</td>
+                    <td>{{ curso.creditos }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalcurso{{ curso.id }}">Editar</button>
+                        <a href="{{ url_for('eliminar_curso', id=curso.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Eliminar este curso?')">Eliminar</a>
+                    </td>
+                </tr>
+
+                <div class="modal fade" id="modalcurso{{ curso.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" action="{{ url_for('editar_curso', id=curso.id) }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Editar Curso</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Nombre</label>
+                                        <input type="text" class="form-control" name="nombre" value="{{ curso.nombre }}" required maxlength="100">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Codigo</label>
+                                        <input type="text" class="form-control" name="codigo" value="{{ curso.codigo }}" required maxlength="20">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Creditos</label>
+                                        <input type="number" class="form-control" name="creditos" value="{{ curso.creditos }}" min="1" max="10" required>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Guardar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
