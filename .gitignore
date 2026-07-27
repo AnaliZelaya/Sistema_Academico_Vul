@@ -6,5 +6,7 @@ venv/
 *.egg-info/
 dist/
 build/
+.pytest_cache/
+security.log
 static/uploads/*
 !static/uploads/.gitkeep
