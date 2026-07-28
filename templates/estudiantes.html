@@ -40,6 +40,7 @@
     </div>
     <div class="card-body">
         <form method="POST" action="{{ url_for('crear_estudiante') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Nombre completo</label>
@@ -114,6 +115,7 @@
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <form method="POST" action="{{ url_for('editar_estudiante', id=est.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <div class="modal-header">
                                         <h5 class="modal-title">Editar Estudiante</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

@@ -10,12 +10,21 @@ from flask import (
     Flask, request, render_template, redirect,
     url_for, session, flash, send_from_directory, abort,
 )
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf import CSRFProtect
 from werkzeug.utils import secure_filename
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(32).hex())
+
+# CORRECCION: Proteccion CSRF en todos los formularios POST/PUT/PATCH/DELETE
+csrf = CSRFProtect(app)
+
+# CORRECCION: Rate limiting para mitigar fuerza bruta en login
+limiter = Limiter(get_remote_address, app=app, storage_uri="memory://")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), os.environ.get('DATABASE_URL', 'academico.db'))
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
@@ -122,6 +131,7 @@ def index():
 
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])
 def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -143,7 +153,7 @@ def login():
 
         # CORRECCION: Verificacion segura con bcrypt
         if user and bcrypt.checkpw(password, user['password'].encode()):
-            session.regenerate = True
+            session.clear()
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['rol'] = user['rol']
