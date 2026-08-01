@@ -4,3 +4,4 @@ python-dotenv==1.2.2
 flask-wtf==1.2.1
 werkzeug==3.1.8
 flask-limiter==3.8.0
+gunicorn==23.0.0

@@ -1,7 +1,11 @@
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'academico.db')
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DB_PATH = os.path.join(os.path.dirname(__file__), os.environ.get('DATABASE_URL', 'academico.db'))
 
 
 def init_db():

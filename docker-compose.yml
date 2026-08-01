@@ -1,0 +1,39 @@
+services:
+  v2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sistema_v2
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-cambiar-esta-clave-secreta-en-produccion-2026}
+      DATABASE_URL: /app/db/v2_academico.db
+      UPLOAD_FOLDER: /app/uploads
+      MAX_CONTENT_LENGTH: ${MAX_CONTENT_LENGTH:-5242880}
+      HTTPS: "off"
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+    volumes:
+      - db_v2:/app/db
+      - uploads_v2:/app/uploads
+    networks:
+      - web
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: sistema_nginx
+    depends_on:
+      - v2
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - web
+
+volumes:
+  db_v2:
+  uploads_v2:
+
+networks:
+  web:

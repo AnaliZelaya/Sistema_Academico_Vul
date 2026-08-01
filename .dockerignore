@@ -1,0 +1,12 @@
+.git
+.env
+certs/
+db/
+tests/
+docs/
+*.docx
+*.db
+__pycache__/
+*.pyc
+.pytest_cache/
+security.log
