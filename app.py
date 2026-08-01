@@ -1,5 +1,7 @@
 import os
 import sqlite3
+import subprocess
+import requests
 from flask import (
     Flask, request, render_template, redirect,
     url_for, session, flash, send_from_directory,
@@ -224,6 +226,39 @@ def eliminar_estudiante(id):
     return redirect(url_for('estudiantes'))
 
 
+@app.route('/estudiantes/importar-foto', methods=['POST'])
+def importar_foto_estudiante():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    estudiante_id = request.form['estudiante_id']
+    url = request.form['url']
+
+    # VULNERABILIDAD (A10 - SSRF): se descarga una URL controlada por el
+    # usuario sin validar esquema, host o IP (permite alcanzar servicios
+    # internos del laboratorio, endpoints de metadata de nube, etc.)
+    # Sin try/except a proposito: igual que el resto de la app, cualquier
+    # fallo (host inalcanzable, timeout, DNS) revienta con el traceback
+    # completo de Werkzeug (debug=True), util para SSRF ciego basado en errores.
+    resp = requests.get(url, timeout=5)
+    nombre_original = url.split('/')[-1] or 'foto'
+    filename = secure_filename(f"foto_est{estudiante_id}_{nombre_original}")
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    with open(filepath, 'wb') as f:
+        f.write(resp.content)
+
+    conn = get_db()
+    cursor = conn.cursor()
+    # VULNERABILIDAD: SQL Injection tambien presente aqui
+    cursor.execute(
+        "UPDATE estudiantes SET foto_url='" + filename + "' WHERE id=" + estudiante_id
+    )
+    conn.commit()
+    conn.close()
+    flash('Foto importada exitosamente desde la URL', 'success')
+    return redirect(url_for('estudiantes'))
+
+
 @app.route('/cursos')
 def cursos():
     if 'user_id' not in session:
@@ -294,6 +329,37 @@ def eliminar_curso(id):
     return redirect(url_for('cursos'))
 
 
+@app.route('/cursos/importar-silabo', methods=['POST'])
+def importar_silabo_curso():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    curso_id = request.form['curso_id']
+    url = request.form['url']
+
+    # VULNERABILIDAD (A10 - SSRF): mismo patron que la foto de perfil, sin
+    # try/except a proposito (ver comentario en importar_foto_estudiante).
+    resp = requests.get(url, timeout=5)
+    nombre_original = url.split('/')[-1] or 'silabo'
+    filename = secure_filename(f"silabo_curso{curso_id}_{nombre_original}")
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    with open(filepath, 'wb') as f:
+        f.write(resp.content)
+
+    conn = get_db()
+    cursor = conn.cursor()
+    # VULNERABILIDAD: SQL Injection en insercion
+    cursor.execute(
+        "INSERT INTO archivos (nombre_original, nombre_guardado, ruta, subido_por, curso_id) VALUES ('"
+        + nombre_original + "', '" + filename + "', '" + filepath + "', "
+        + str(session['user_id']) + ", " + curso_id + ")"
+    )
+    conn.commit()
+    conn.close()
+    flash('Silabo importado exitosamente desde la URL', 'success')
+    return redirect(url_for('cursos'))
+
+
 @app.route('/notas')
 def notas():
     if 'user_id' not in session:
@@ -302,7 +368,7 @@ def notas():
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT n.id, n.nota, n.ciclo,
+        SELECT n.id, n.nota, n.ciclo, n.observaciones,
                e.nombre as estudiante_nombre,
                c.nombre as curso_nombre, c.codigo as curso_codigo
         FROM notas n
@@ -333,12 +399,15 @@ def crear_nota():
     curso_id = request.form['curso_id']
     nota = request.form['nota']
     ciclo = request.form['ciclo']
+    # VULNERABILIDAD (A03 - XSS almacenado): este campo se renderiza en
+    # notas.html con el filtro |safe, sin escapar HTML/JS.
+    observaciones = request.form.get('observaciones', '')
 
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO notas (estudiante_id, curso_id, nota, ciclo) VALUES ("
-        + estudiante_id + ", " + curso_id + ", " + nota + ", '" + ciclo + "')"
+        "INSERT INTO notas (estudiante_id, curso_id, nota, ciclo, observaciones) VALUES ("
+        + estudiante_id + ", " + curso_id + ", " + nota + ", '" + ciclo + "', '" + observaciones + "')"
     )
     conn.commit()
     conn.close()
@@ -394,7 +463,12 @@ def subir_archivo():
 
     # VULNERABILIDAD: Sin validacion de tipo de archivo
     # VULNERABILIDAD: Sin validacion de tamano
-    # VULNERABILIDAD: Se guarda con el nombre original (path traversal posible)
+    # VULNERABILIDAD (A03 - RCE encadenado): 'secure_filename' se importa
+    # pero deliberadamente NO se usa aqui. El nombre crudo del multipart
+    # llega directo a os.path.join()/save(), por lo que un filename como
+    # "../app.py" escribe fuera de UPLOAD_FOLDER. Con debug=True el
+    # reloader de Werkzeug detecta el cambio en app.py y lo recarga,
+    # ejecutando el contenido subido por el atacante.
     filename = archivo.filename
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     archivo.save(filepath)
@@ -440,6 +514,48 @@ def eliminar_archivo(id):
     return redirect(url_for('archivos'))
 
 
+@app.route('/diagnostico', methods=['GET', 'POST'])
+def diagnostico():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    resultado = None
+    host = ''
+    if request.method == 'POST':
+        host = request.form['host']
+        # VULNERABILIDAD (A03 - RCE / Command Injection): el host se
+        # concatena directo en un comando de shell sin sanitizar.
+        # Payload de referencia (contenedor Linux): "127.0.0.1; whoami"
+        # Payload equivalente para pruebas locales en cmd.exe: "127.0.0.1 & whoami"
+        comando = "ping -c 2 " + host
+        try:
+            proceso = subprocess.run(
+                comando, shell=True, capture_output=True, text=True, timeout=15
+            )
+            resultado = proceso.stdout + proceso.stderr
+        except Exception as e:
+            resultado = str(e)
+
+    return render_template('diagnostico.html', resultado=resultado, host=host)
+
+
+@app.route('/admin/usuarios')
+def admin_usuarios():
+    # VULNERABILIDAD (A01 - Broken Access Control): solo se comprueba que
+    # exista una sesion iniciada, NUNCA se verifica session['rol']. Un
+    # usuario con rol 'docente' que descubra esta URL obtiene acceso total,
+    # incluidas las contrasenas en texto plano de todos los usuarios.
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM usuarios")
+    usuarios = cursor.fetchall()
+    conn.close()
+    return render_template('admin_usuarios.html', usuarios=usuarios)
+
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -450,4 +566,5 @@ def logout():
 if __name__ == '__main__':
     init_db()
     # VULNERABILIDAD: Debug mode activado en produccion
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=True, host='0.0.0.0', port=port)

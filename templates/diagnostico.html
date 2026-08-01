@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Diagnostico de Red{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Diagnostico de Red</h2>
+</div>
+
+<div class="card form-card">
+    <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        Ping a un host
+    </div>
+    <div class="card-body">
+        <!-- VULNERABLE: Command Injection - el host se pasa directo a un comando de shell -->
+        <form method="POST" action="{{ url_for('diagnostico') }}">
+            <div class="row g-3">
+                <div class="col-md-9">
+                    <label class="form-label">Host o IP</label>
+                    <input type="text" class="form-control" name="host" value="{{ host }}" placeholder="Ej: 127.0.0.1" required maxlength="200">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Ejecutar Ping</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if resultado is not none %}
+<div class="card table-card">
+    <div class="card-header">Resultado</div>
+    <div class="card-body">
+        <pre style="white-space:pre-wrap;word-break:break-word;">{{ resultado }}</pre>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

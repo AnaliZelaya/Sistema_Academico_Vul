@@ -63,6 +63,39 @@
     </div>
 </div>
 
+<!-- Formulario importar foto de perfil por URL -->
+<div class="card form-card">
+    <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Importar Foto de Perfil desde URL
+    </div>
+    <div class="card-body">
+        <!-- VULNERABLE: SSRF - el servidor descarga cualquier URL sin validar -->
+        <form method="POST" action="{{ url_for('importar_foto_estudiante') }}">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Estudiante</label>
+                    <select class="form-select" name="estudiante_id" required>
+                        <option value="">Seleccionar</option>
+                        {% for est in estudiantes %}
+                        <option value="{{ est.id }}">{{ est.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">URL de la foto</label>
+                    <input type="text" class="form-control" name="url" placeholder="http://..." required>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Importar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Tabla de estudiantes -->
 <div class="card table-card">
     <div class="card-header">
@@ -76,6 +109,7 @@
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Foto</th>
                         <th>Nombre</th>
                         <th>Email</th>
                         <th>Carrera</th>
@@ -86,6 +120,13 @@
                     {% for est in estudiantes %}
                     <tr>
                         <td>{{ est.id }}</td>
+                        <td>
+                            {% if est.foto_url %}
+                            <img src="{{ url_for('static', filename='uploads/' + est.foto_url) }}" alt="foto" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+                            {% else %}
+                            <span class="badge badge-neutral">Sin foto</span>
+                            {% endif %}
+                        </td>
                         <td><strong>{{ est.nombre }}</strong></td>
                         <td style="color:var(--text-secondary);">{{ est.email }}</td>
                         <td><span class="badge badge-neutral">{{ est.carrera }}</span></td>
@@ -97,12 +138,14 @@
                                 </svg>
                                 Editar
                             </button>
+                            {% if session.get('rol') == 'admin' %}
                             <a href="{{ url_for('eliminar_estudiante', id=est.id) }}" class="btn btn-vulnerable btn-sm" onclick="return confirm('Eliminar este estudiante?')">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;">
                                     <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                                 </svg>
                                 Eliminar
                             </a>
+                            {% endif %}
                         </td>
                     </tr>
 

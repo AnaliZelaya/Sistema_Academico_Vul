@@ -1,1 +1,5 @@
 flask==3.0.3
+# VULNERABILIDAD (A06): Werkzeug 3.0.1 es vulnerable a CVE-2024-34069
+# (PIN del debugger interactivo insuficientemente aleatorio, corregido en 3.0.3)
+werkzeug==3.0.1
+requests==2.31.0

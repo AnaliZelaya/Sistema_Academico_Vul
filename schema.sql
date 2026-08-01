@@ -15,7 +15,8 @@ CREATE TABLE estudiantes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
     email TEXT NOT NULL,
-    carrera TEXT NOT NULL
+    carrera TEXT NOT NULL,
+    foto_url TEXT
 );
 
 CREATE TABLE cursos (
@@ -31,6 +32,7 @@ CREATE TABLE notas (
     curso_id INTEGER NOT NULL,
     nota REAL NOT NULL,
     ciclo TEXT NOT NULL,
+    observaciones TEXT,
     FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id),
     FOREIGN KEY (curso_id) REFERENCES cursos(id)
 );
@@ -41,5 +43,7 @@ CREATE TABLE archivos (
     nombre_guardado TEXT NOT NULL,
     ruta TEXT NOT NULL,
     subido_por INTEGER,
-    FOREIGN KEY (subido_por) REFERENCES usuarios(id)
+    curso_id INTEGER,
+    FOREIGN KEY (subido_por) REFERENCES usuarios(id),
+    FOREIGN KEY (curso_id) REFERENCES cursos(id)
 );

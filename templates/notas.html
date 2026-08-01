@@ -42,6 +42,10 @@
                     <label class="form-label">Ciclo</label>
                     <input type="text" class="form-control" name="ciclo" placeholder="2026-I" required maxlength="20">
                 </div>
+                <div class="col-md-10">
+                    <label class="form-label">Observaciones</label>
+                    <input type="text" class="form-control" name="observaciones" placeholder="Comentario del docente sobre la nota...">
+                </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-secure w-100">Registrar</button>
                 </div>
@@ -68,6 +72,7 @@
                         <th style="width:100px;">Nota</th>
                         <th>Ciclo</th>
                         <th>Estado</th>
+                        <th>Observaciones</th>
                         <th style="width:80px;">Accion</th>
                     </tr>
                 </thead>
@@ -94,12 +99,16 @@
                         <td class="grade-cell {{ grade_class }}">{{ "%.1f"|format(nota_val) }}</td>
                         <td>{{ nota.ciclo }}</td>
                         <td><span class="badge {{ badge_type }}">{{ badge_text }}</span></td>
+                        <!-- VULNERABLE (XSS almacenado): renderizado con |safe, sin escapar HTML/JS -->
+                        <td>{{ nota.observaciones|safe if nota.observaciones else '' }}</td>
                         <td>
+                            {% if session.get('rol') == 'admin' %}
                             <a href="{{ url_for('eliminar_nota', id=nota.id) }}" class="btn btn-vulnerable btn-sm" onclick="return confirm('Eliminar esta nota?')">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;">
                                     <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                                 </svg>
                             </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
