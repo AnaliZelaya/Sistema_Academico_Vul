@@ -40,6 +40,14 @@
                     <a class="nav-link {% if request.path.startswith('/archivos') %}active{% endif %}" href="{{ url_for('archivos') }}">
                         <span class="nav-link-icon">&#9632;</span> Archivos
                     </a>
+                    {% if session.get('rol') == 'admin' %}
+                    <a class="nav-link {% if request.path.startswith('/diagnostico') %}active{% endif %}" href="{{ url_for('diagnostico') }}">
+                        <span class="nav-link-icon">&#9632;</span> Diagnostico
+                    </a>
+                    <a class="nav-link {% if request.path.startswith('/importar') %}active{% endif %}" href="{{ url_for('importar') }}">
+                        <span class="nav-link-icon">&#9632;</span> Importar
+                    </a>
+                    {% endif %}
                     <span class="nav-link badge badge-{{ 'secure' if session.get('rol') == 'admin' else 'neutral' }}" style="font-size:12px;">
                         {{ session.get('username', '') }} · {{ 'Admin' if session.get('rol') == 'admin' else 'Docente' }}
                     </span>

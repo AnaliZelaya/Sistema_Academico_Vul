@@ -2,6 +2,13 @@ import os
 import sqlite3
 import uuid
 import logging
+import time
+import ipaddress
+import socket
+import subprocess  # nosec B404 - solo se usa con allowlist fija y shell=False (ver /diagnostico)
+import urllib.error
+import urllib.parse
+import urllib.request
 from functools import wraps
 
 import bcrypt
@@ -37,7 +44,10 @@ app.config['WTF_CSRF_SSL_STRICT'] = False
 limiter = Limiter(get_remote_address, app=app, storage_uri="memory://")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), os.environ.get('DATABASE_URL', 'academico.db'))
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
+# CORRECCION: Uploads fuera del webroot (A08) - static/uploads era servible
+# directamente por Flask (/static/uploads/<file>). Ahora se guardan en uploads/
+# en la raiz del proyecto y solo se sirven via /archivos/descargar (as_attachment).
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), os.environ.get('UPLOAD_FOLDER', 'uploads'))
 MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 5 * 1024 * 1024))
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -58,6 +68,105 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(message)s',
 )
 logger = logging.getLogger(__name__)
+
+
+# CORRECCION: Lockout de cuenta tras intentos fallidos (A04) - complementa el
+# rate limiting por IP con un bloqueo por usuario durante BLOQUEO_SEGUNDOS.
+MAX_INTENTOS_LOGIN = 5
+BLOQUEO_SEGUNDOS = 10 * 60
+_intentos_fallidos = {}
+_bloqueos = {}
+
+
+def _usuario_bloqueado(username):
+    fin = _bloqueos.get(username, 0)
+    if fin and fin > time.time():
+        return True
+    if fin and fin <= time.time():
+        _bloqueos.pop(username, None)
+        _intentos_fallidos.pop(username, None)
+    return False
+
+
+# CORRECCION: Validacion de magic bytes (A08) - la firma real del archivo debe
+# corresponder a su extension. txt/csv no tienen firma estandar (se validan
+# solo por extension y MIME, documentado en el README).
+MAGIC_BYTES = {
+    'pdf': b'%PDF',
+    'png': b'\x89PNG\r\n\x1a\n',
+    'jpg': b'\xff\xd8\xff',
+    'jpeg': b'\xff\xd8\xff',
+    'gif': b'GIF8',
+    'docx': b'PK\x03\x04',
+    'xlsx': b'PK\x03\x04',
+}
+
+
+def _validar_magic_bytes(ext, head):
+    firma = MAGIC_BYTES.get(ext)
+    if firma is None:
+        return True
+    return head.startswith(firma)
+
+
+# CORRECCION: Proteccion SSRF (A10). Solo http/https hacia IPs publicas;
+# se bloquean loopback, RFC1918, link-local (incluye 169.254.169.254 metadata),
+# ULA IPv6, IPv4-mapped, multicast, reservadas y sin especificar.
+MAX_IMPORT_BYTES = 10 * 1024
+
+
+def _validar_url_ssrf(url):
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ('http', 'https'):
+        abort(400)
+    hostname = parsed.hostname
+    if not hostname:
+        abort(400)
+    try:
+        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+    except ValueError:
+        abort(400)
+    try:
+        infos = socket.getaddrinfo(hostname, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror:
+        abort(400)
+    ips = {info[4][0] for info in infos}
+    for ip in ips:
+        try:
+            addr = ipaddress.ip_address(ip.split('%')[0])
+        except ValueError:
+            abort(400)
+        if (addr.is_loopback or addr.is_private or addr.is_link_local
+                or addr.is_multicast or addr.is_reserved or addr.is_unspecified):
+            logger.warning(f"SSRF bloqueado: {url} -> IP no publica {ip}")
+            abort(403)
+
+
+class _SinRedirecciones(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        logger.warning(f"SSRF: redireccion bloqueada hacia {newurl}")
+        return None
+
+
+def _fetch_url(url, timeout=5):
+    # urllib se usa deliberadamente: la proteccion SSRF se aplica antes en
+    # _validar_url_ssrf (resolucion DNS + solo IPs publicas) y las
+    # redirecciones se bloquean para impedir bypass hacia redes internas.
+    opener = urllib.request.build_opener(_SinRedirecciones)
+    with opener.open(url, timeout=timeout) as resp:
+        status = resp.status
+        contenido = resp.read(MAX_IMPORT_BYTES)
+        final_url = resp.geturl()
+    return status, contenido, final_url
+
+
+# CORRECCION: Comandos de diagnostico con allowlist y shell=False (A03).
+# Solo argv fijo, sin argumentos del usuario -> no hay inyeccion de comandos.
+ALLOWED_COMMANDS = {
+    'fecha': ['date', '+%Y-%m-%d %H:%M:%S'],
+    'hostname': ['hostname'],
+    'sistema': ['uname', '-a'],
+}
 
 
 def get_db():
@@ -186,6 +295,12 @@ def login():
             flash('Ingrese usuario y contrasena', 'danger')
             return render_template('login.html')
 
+        # CORRECCION: Lockout tras demasiados intentos fallidos (A04)
+        if _usuario_bloqueado(username):
+            logger.warning(f"Login bloqueado (lockout): {username}")
+            flash('Cuenta bloqueada temporalmente por demasiados intentos fallidos', 'danger')
+            return render_template('login.html')
+
         conn = get_db()
         cursor = conn.cursor()
         # CORRECCION: Query parametrizada - sin concatenacion de strings
@@ -202,10 +317,16 @@ def login():
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['rol'] = user['rol']
+            _intentos_fallidos.pop(username, None)
+            _bloqueos.pop(username, None)
             logger.info(f"Login exitoso: {username}")
             flash('Inicio de sesion exitoso', 'success')
             return redirect(url_for('dashboard'))
         else:
+            _intentos_fallidos[username] = _intentos_fallidos.get(username, 0) + 1
+            if _intentos_fallidos[username] >= MAX_INTENTOS_LOGIN:
+                _bloqueos[username] = time.time() + BLOQUEO_SEGUNDOS
+                logger.warning(f"Cuenta bloqueada tras {MAX_INTENTOS_LOGIN} intentos fallidos: {username}")
             logger.warning(f"Login fallido: {username}")
             flash('Credenciales incorrectas', 'danger')
 
@@ -545,7 +666,17 @@ def subir_archivo():
     ext = original_filename.rsplit('.', 1)[1].lower() if '.' in original_filename else ''
     safe_filename = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
 
-    # CORRECCION: Guardar fuera del webroot (en subdirectorio sin acceso directo)
+    # CORRECCION: Validacion de magic bytes - la firma real debe coincidir
+    # con la extension (impide disfrazar contenido malicioso como PDF/PNG/etc.)
+    archivo.stream.seek(0)
+    head = archivo.stream.read(16)
+    archivo.stream.seek(0)
+    if not _validar_magic_bytes(ext, head):
+        flash('El contenido no corresponde al tipo de archivo', 'danger')
+        logger.warning(f"Intento de subida con magic bytes invalidos: {archivo.filename}")
+        return redirect(url_for('archivos'))
+
+    # CORRECCION: Guardar fuera del webroot (en directorio sin acceso directo)
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
     archivo.save(filepath)
 
@@ -599,6 +730,65 @@ def eliminar_archivo(id):
     conn.close()
     flash('Archivo eliminado', 'success')
     return redirect(url_for('archivos'))
+
+
+@app.route('/importar', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def importar():
+    resultado = None
+    if request.method == 'POST':
+        url = request.form.get('url', '').strip()
+        if not url:
+            flash('Ingrese una URL', 'danger')
+            return render_template('importar.html')
+
+        _validar_url_ssrf(url)
+
+        try:
+            status, contenido, final_url = _fetch_url(url)
+        except urllib.error.HTTPError as e:
+            if 300 <= e.code < 400:
+                logger.warning(f"SSRF: redireccion bloqueada hacia {url}")
+                flash('Redirecciones no permitidas', 'danger')
+            else:
+                flash(f'Error HTTP {e.code}', 'danger')
+            return render_template('importar.html')
+        except (urllib.error.URLError, socket.timeout, ValueError, TimeoutError) as e:
+            logger.warning(f"Importacion fallida {url}: {e}")
+            flash('No se pudo obtener el contenido de la URL', 'danger')
+            return render_template('importar.html')
+
+        texto = contenido.decode('utf-8', errors='replace')
+        resultado = {'status': status, 'url': final_url, 'preview': texto[:500]}
+        logger.info(f"Importacion exitosa: {url}")
+
+    return render_template('importar.html', resultado=resultado)
+
+
+@app.route('/diagnostico', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def diagnostico():
+    salida = None
+    error = None
+    if request.method == 'POST':
+        comando = request.form.get('comando', '').strip()
+        if comando not in ALLOWED_COMMANDS:
+            logger.warning(f"RCE bloqueado: comando no permitido '{comando}'")
+            flash('Comando no permitido (solo: fecha, hostname, sistema)', 'danger')
+            return render_template('diagnostico.html')
+        try:
+            # La entrada es una allowlist fija (argv sin argumentos del usuario)
+            # y se ejecuta con shell=False, por lo que no hay inyeccion posible.
+            resultado = subprocess.run(ALLOWED_COMMANDS[comando], shell=False,  # nosec B603
+                                       capture_output=True, text=True, timeout=10)
+            salida = resultado.stdout.strip()
+            logger.info(f"Diagnostico ejecutado: {comando}")
+        except Exception as e:
+            logger.warning(f"Diagnostico fallo ({comando}): {e}")
+            error = str(e)
+    return render_template('diagnostico.html', salida=salida, error=error)
 
 
 @app.route('/logout')

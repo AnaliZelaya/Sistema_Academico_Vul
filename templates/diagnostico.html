@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Diagnostico{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Diagnostico del Sistema</h2>
+</div>
+
+<div class="card form-card">
+    <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        Ejecutar comando
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('diagnostico') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-3">
+                <div class="col-md-9">
+                    <label class="form-label">Comando</label>
+                    <input type="text" class="form-control" name="comando" placeholder="fecha" required list="comandos-permitidos">
+                    <small style="font-size:12px;color:var(--text-muted);">
+                        Solo comandos de una allowlist (fecha, hostname, sistema). Se ejecutan con
+                        <code>shell=False</code> y sin argumentos del usuario: inyeccion de comandos bloqueada.
+                    </small>
+                    <datalist id="comandos-permitidos">
+                        <option value="fecha">
+                        <option value="hostname">
+                        <option value="sistema">
+                    </datalist>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Ejecutar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if salida %}
+<div class="card table-card">
+    <div class="card-header">Salida</div>
+    <div class="card-body">
+        <pre style="background:var(--surface);padding:12px;border-radius:var(--radius-md);font-size:13px;">{{ salida }}</pre>
+    </div>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="card table-card">
+    <div class="card-header">Error</div>
+    <div class="card-body">
+        <p style="font-size:14px;">{{ error }}</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

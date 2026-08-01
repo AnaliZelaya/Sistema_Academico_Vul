@@ -33,6 +33,11 @@ Sistema academico basico construido con practicas SecDevOps, corrigiendo las vul
 14. **Cookies de sesion seguras** - `HttpOnly`, `SameSite=Lax`, `Secure` (cuando HTTPS esta activo)
 15. **HTTPS/TLS** - Soporte opcional via `HTTPS=on` con certificados en `certs/` (auto-firmados con OpenSSL)
 16. **Paginas de error personalizadas** - 400, 403, 404 y 500 sin exponer trazas del servidor
+17. **SSRF (A10)** - `/importar` solo permite `http/https` hacia **IPs publicas**; bloquea localhost, RFC1918, `169.254.169.254` (metadata), ULA IPv6, multicast/reservadas y las redirecciones. Solo admin
+18. **Inyeccion de comandos (A03)** - `/diagnostico` ejecuta una **allowlist fija** (`fecha`, `hostname`, `sistema`) con `shell=False` y argv sin argumentos del usuario; cualquier otra entrada es rechazada. Solo admin
+19. **Magic bytes (A08)** - la firma real del archivo debe corresponder a su extension (PDF `%PDF`, PNG `\x89PNG`, JPG `\xff\xd8\xff`, GIF `GIF8`, DOCX/XLSX `PK\x03\x04`); txt/csv se validan solo por extension y MIME
+20. **Uploads fuera del webroot (A08)** - los archivos se guardan en `uploads/` (sin acceso directo por `/static/`) y solo se sirven via `/archivos/descargar` (`as_attachment`)
+21. **Lockout de cuenta (A04)** - tras 5 intentos fallidos de login la cuenta se bloquea 10 minutos (complementa el rate limit por IP); se registra en `security.log`
 
 ## DevSecOps
 
@@ -80,8 +85,9 @@ python -m pytest tests/ -v
 
 Los tests estan separados por vulnerabilidad:
 `test_sqli.py`, `test_auth.py`, `test_upload.py`, `test_rbac.py`, `test_csrf_delete.py`,
-`test_errors.py`, `test_cookies.py` (mas `test_base.py` con la configuracion compartida).
-Total: **29 tests**.
+`test_errors.py`, `test_cookies.py`, `test_ssrf.py`, `test_diagnostico.py`,
+`test_lockout.py` (mas `test_base.py` con la configuracion compartida).
+Total: **59 tests**.
 
 ## Analisis de seguridad
 
