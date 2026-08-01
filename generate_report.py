@@ -202,8 +202,10 @@ def create_report():
         ('Figura 7', 'V2 - Hashing de passwords con bcrypt'),
         ('Figura 8', 'V2 - Headers de seguridad configurados'),
         ('Figura 9', 'V2 - Validacion de archivos con whitelist'),
-        ('Figura 10', 'Resultados de tests automatizados (8/8 passing)'),
+        ('Figura 10', 'Resultados de tests automatizados (59/59 passing)'),
         ('Figura 11', 'Comparativa de seguridad V1 vs V2'),
+        ('Figura 12', 'Arquitectura de despliegue - Docker Compose (V2 + Nginx TLS)'),
+        ('Figura 13', 'Flujo TLS - redireccion HTTP a HTTPS'),
     ]
     for num, desc in figuras:
         p = doc.add_paragraph()
@@ -240,8 +242,12 @@ def create_report():
             ('Base de datos', 'SQLite'),
             ('Frontend', 'HTML5 + Bootstrap 5 + Jinja2'),
             ('Seguridad V2', 'bcrypt, python-dotenv'),
-            ('Testing', 'pytest'),
-            ('Control de versiones', 'Git (ramas main y v1-insegura)'),
+            ('Testing', 'pytest (59 tests)'),
+            ('Servidor WSGI', 'Gunicorn 23.0.0'),
+            ('Reverse proxy + TLS', 'Nginx 1.27 (alpine)'),
+            ('Certificados', 'OpenSSL (self-signed) / Let\'s Encrypt'),
+            ('Orquestacion', 'Docker / Docker Compose'),
+            ('Control de versiones', 'Git (ramas main, P2_csrf, feature/p3-tls, v1-insegura)'),
         ])
     add_table_label(doc, 'Tabla 1. Stack tecnologico de la aplicacion')
 
@@ -539,25 +545,52 @@ def create_report():
     add_heading_apa(doc, '3.6 Tests Automatizados', level=3)
 
     add_paragraph(doc,
-        'Se implementaron 8 tests automatizados que verifican las correcciones '
-        'de seguridad en la version 2:',
+        'Se implementaron 59 tests (11 archivos) que verifican las correcciones '
+        'de seguridad de la version 2, organizados por vulnerabilidad:',
         first_line_indent=Cm(1.27))
 
     create_table(doc,
-        ['Test', 'Verificacion'],
+        ['Archivo de tests', 'Verificacion'],
         [
-            ('test_login_correcto', 'Login exitoso con credenciales validas'),
-            ('test_login_incorrecto', 'Rechazo con credenciales invalidas'),
-            ('test_sqli_busqueda_inyectada', 'SQL Injection no funciona en busqueda'),
-            ('test_sqli_union_attack', 'UNION injection no funciona'),
-            ('test_upload_extension_no_permitida', 'Archivos .exe son rechazados'),
-            ('test_upload_svg_no_permitido', 'Archivos .svg son rechazados'),
-            ('test_security_headers_present', 'Headers de seguridad presentes'),
-            ('test_redirectSinLogin', 'Redireccion al login sin sesion'),
+            ('test_sqli.py', 'SQL Injection no funciona en busqueda ni login'),
+            ('test_auth.py', 'Login correcto/incorrecto y hashing bcrypt'),
+            ('test_upload.py', 'Extensiones no permitidas rechazadas y magic bytes'),
+            ('test_rbac.py', 'RBAC: docente solo lectura, admin CRUD'),
+            ('test_csrf_delete.py', 'Deletes solo por POST + token CSRF'),
+            ('test_errors.py', 'Paginas 403/404/500 personalizadas sin trazas'),
+            ('test_cookies.py', 'Cookies HttpOnly/SameSite/Secure'),
+            ('test_ssrf.py', 'SSRF bloqueado en /importar'),
+            ('test_diagnostico.py', 'RCE bloqueado en /diagnostico (allowlist)'),
+            ('test_lockout.py', 'Lockout de cuenta tras intentos fallidos'),
+            ('test_base.py', 'Configuracion compartida del test client'),
         ])
     add_table_label(doc, 'Tabla 4. Tests automatizados de seguridad')
 
-    add_figure_label(doc, 'Figura 10. Resultados de tests automatizados (8/8 passing)')
+    add_figure_label(doc, 'Figura 10. Resultados de tests automatizados (59/59 passing)')
+
+    # 3.7 Hardening adicional de V2 (P2)
+    add_heading_apa(doc, '3.7 Hardening adicional de la V2 (P2)', level=3)
+
+    add_paragraph(doc,
+        'Ademas de las correcciones anteriores, la version 2 cierra los siguientes '
+        'controles de seguridad (OWASP Top 10 2021):',
+        first_line_indent=Cm(1.27))
+
+    create_table(doc,
+        ['Categoria OWASP', 'Control implementado'],
+        [
+            ('A01 - Broken Access Control', 'RBAC real con @admin_required; docente solo lectura; deletes por POST + CSRF'),
+            ('A02 - Cryptographic Failures', 'Passwords bcrypt, secret por env, HTTPS/TLS'),
+            ('A03 - Injection', 'Queries parametrizadas + subprocess con allowlist y shell=False'),
+            ('A04 - Insecure Design', 'Rate limiting por IP + lockout de cuenta'),
+            ('A05 - Security Misconfiguration', 'debug off, paginas 403/404/500, security headers'),
+            ('A06 - Vulnerable Components', 'Dependencias actualizadas validadas con Safety'),
+            ('A07 - Auth Failures', 'Cookies HttpOnly/SameSite/Secure, regeneracion de sesion'),
+            ('A08 - Data Integrity Failures', 'Upload validado (ext + MIME + magic bytes), fuera del webroot, as_attachment'),
+            ('A09 - Logging & Monitoring', 'security.log: logins fallidos, subidas, acciones admin'),
+            ('A10 - SSRF', '/importar bloquea redirecciones e IPs no publicas'),
+        ])
+    add_table_label(doc, 'Tabla 5. Cobertura OWASP Top 10 2021 en la V2')
 
     doc.add_page_break()
 
@@ -575,12 +608,19 @@ def create_report():
             ('Passwords', 'Texto plano', 'bcrypt hashing'),
             ('Secret Key', 'Hardcodeada ("12345")', 'Variable de entorno (.env)'),
             ('XSS', 'Sin sanitizacion', 'Auto-escaping Jinja2 + CSP'),
-            ('File Upload', 'Sin validacion', 'Whitelist + UUID + validacion MIME'),
+            ('File Upload', 'Sin validacion', 'Whitelist + UUID + magic bytes + fuera del webroot'),
             ('Headers', 'Ninguno', 'CSP, HSTS, X-Frame-Options'),
+            ('Control de acceso', 'docente = admin, sin chequeos', 'RBAC (@admin_required), docente solo lectura'),
+            ('Eliminaciones', 'Por GET, sin CSRF', 'Por POST + token CSRF'),
+            ('Cookies de sesion', 'Sin flags', 'HttpOnly / SameSite / Secure'),
+            ('Errores', 'Trazas expuestas (debug)', 'Paginas 403/404/500 personalizadas'),
+            ('SSRF', 'Endpoint /importar sin control', '/importar bloquea IPs privadas y redirecciones'),
+            ('RCE', 'Comandos sin sanitizar', 'Allowlist fija con shell=False'),
             ('Debug Mode', 'Activado', 'Desactivado'),
-            ('Tests', 'Ninguno', '8 tests automatizados'),
+            ('TLS/HTTPS', 'Sin cifrado', 'Nginx TLS + redirect + HSTS'),
+            ('Tests', 'Ninguno', '59 tests automatizados'),
         ])
-    add_table_label(doc, 'Tabla 5. Comparativa de seguridad entre Version 1 y Version 2')
+    add_table_label(doc, 'Tabla 6. Comparativa de seguridad entre Version 1 y Version 2')
 
     add_figure_label(doc, 'Figura 11. Comparativa de seguridad V1 vs V2')
 
@@ -588,6 +628,99 @@ def create_report():
         'Los resultados muestran que la version 2 elimina las vulnerabilidades '
         'principales mediante la aplicacion de practicas de seguridad en el '
         'ciclo de desarrollo.')
+
+    doc.add_page_break()
+
+    # --- 5. Arquitectura de Despliegue y TLS ---
+    add_heading_apa(doc, '5. Arquitectura de Despliegue y TLS', level=2)
+
+    add_paragraph(doc,
+        'La aplicacion V2 se despliega en un escenario cercano a la realidad '
+        'usando Docker Compose: la aplicacion corre con Gunicorn detras de un '
+        'reverse proxy Nginx que termina el cifrado TLS/HTTPS. La V1 vulnerable '
+        'se despliega de forma separada desde su propia rama (v1-insegura) para '
+        'el laboratorio de pruebas.',
+        first_line_indent=Cm(1.27))
+
+    add_paragraph(doc,
+        'Topologia del despliegue (Docker Compose):',
+        first_line_indent=Cm(1.27))
+
+    add_code_block(doc,
+        'Host (Docker Compose)\n'
+        '+-- red "web" (aislada)\n'
+        '|   +-- nginx :80/:443  ->  TLS (OpenSSL), redirect HTTP->HTTPS, HSTS\n'
+        '|   |       proxy_pass http://v2:5000\n'
+        '|   +-- v2-segura :5000  ->  Gunicorn (3 workers) + Flask + SQLite\n'
+        '|           volumenes: db_v2, uploads_v2\n'
+        '|\n'
+        '+-- certs/  ->  certificados auto-firmados (openssl), gitignored',
+        label='Diagrama de la topologia:')
+
+    add_figure_label(doc, 'Figura 12. Arquitectura de despliegue - Docker Compose (V2 + Nginx TLS)')
+
+    add_heading_apa(doc, '5.1 Stack de despliegue', level=3)
+
+    create_table(doc,
+        ['Componente', 'Tecnologia', 'Version'],
+        [
+            ('Servidor WSGI', 'Gunicorn', '23.0.0 (3 workers)'),
+            ('Reverse proxy + TLS', 'Nginx', '1.27 (alpine)'),
+            ('Certificados', 'OpenSSL (self-signed)', '3.x; alt. Let\'s Encrypt'),
+            ('Orquestacion', 'Docker / Docker Compose', 'Compose 2'),
+            ('Base de datos', 'SQLite', '3.x'),
+        ])
+    add_table_label(doc, 'Tabla 7. Stack de despliegue de la V2')
+
+    add_heading_apa(doc, '5.2 Flujo TLS', level=3)
+
+    add_paragraph(doc,
+        'Cuando un cliente solicita http://..., Nginx responde con un redirect 301 '
+        'hacia https://.... Luego se realiza el handshake TLS (certificado '
+        'auto-firmado de laboratorio) y Nginx reenvia la peticion a la aplicacion '
+        'por HTTP interno (red no expuesta). La respuesta incluye las cabeceras '
+        'Strict-Transport-Security, X-Content-Type-Options y X-Frame-Options.',
+        first_line_indent=Cm(1.27))
+
+    add_code_block(doc,
+        'server {\n'
+        '    listen 80;\n'
+        '    return 301 https://$host$request_uri;\n'
+        '}\n'
+        'server {\n'
+        '    listen 443 ssl;\n'
+        '    ssl_certificate     /etc/nginx/certs/cert.pem;\n'
+        '    ssl_certificate_key /etc/nginx/certs/key.pem;\n'
+        '    ssl_protocols       TLSv1.2 TLSv1.3;\n'
+        '    add_header Strict-Transport-Security "max-age=31536000" always;\n'
+        '    location / { proxy_pass http://v2:5000; }\n'
+        '}',
+        label='Fragmento de nginx/nginx.conf (TLS + redirect):')
+
+    add_figure_label(doc, 'Figura 13. Flujo TLS - redireccion HTTP a HTTPS')
+
+    add_heading_apa(doc, '5.3 Despliegue local', level=3)
+
+    add_code_block(doc,
+        '# 1. Certificados self-signed\n'
+        './scripts/generate_certs.sh        # o .\\scripts\\generate_certs.ps1\n'
+        '\n'
+        '# 2. Configuracion y levantamiento\n'
+        'cp .env.example .env\n'
+        'docker compose up -d --build\n'
+        '\n'
+        '# 3. Resultado\n'
+        'https://localhost   (V2 segura; HTTP redirige a HTTPS)\n'
+        'http://localhost:5001   (V1 vulnerable, desde su rama v1-insegura)',
+        label='Comandos de despliegue:')
+
+    add_paragraph(doc,
+        'Para produccion se recomienda un certificado real con Let\'s Encrypt '
+        '(certbot --nginx -d academico.example.com). La guia completa de '
+        'despliegue en Docker Compose, VM con systemd y escenario GNS3 se '
+        'encuentra en docs/DESPLIEGUE.md; la topologia detallada en '
+        'docs/ARQUITECTURA.md.',
+        first_line_indent=Cm(1.27))
 
     doc.add_page_break()
 
@@ -620,6 +753,12 @@ def create_report():
         'Los tests automatizados de seguridad son esenciales para verificar que '
         'las correcciones funcionan correctamente y para prevenir regresiones en '
         'futuras versiones del codigo.',
+
+        'El despliegue con Docker Compose y terminacion TLS en Nginx acerca el '
+        'escenario a un entorno de produccion real: red interna no expuesta, '
+        'redireccion HTTP a HTTPS, HSTS y certificados SSL/TLS generados con '
+        'OpenSSL, lo que cierra las vulnerabilidades de cifrado y '
+        'configuracion de la aplicacion.',
     ]
     for c in conclusions:
         p = doc.add_paragraph(style='List Bullet')
@@ -644,6 +783,10 @@ def create_report():
         'Bandit. (2024). Bandit is a tool designed to find common issues in Python code. https://bandit.readthedocs.io/',
         'NIST. (2023). National Vulnerability Database. https://nvd.nist.gov/',
         'Microsoft. (2023). Secure Development Lifecycle. https://www.microsoft.com/en-us/securityengineering/sdl',
+        'Docker. (2024). Docker Compose. https://docs.docker.com/compose/',
+        'Nginx. (2024). NGINX documentation. https://nginx.org/en/docs/',
+        'OpenSSL. (2024). OpenSSL Cryptography and SSL/TLS Toolkit. https://www.openssl.org/',
+        'Gunicorn. (2024). Gunicorn - WSGI server. https://gunicorn.org/',
     ]
     for ref in references:
         p = doc.add_paragraph()

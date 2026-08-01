@@ -59,6 +59,19 @@ python app.py
 
 La app estara disponible en http://localhost:5000
 
+## Despliegue (Docker + Nginx + TLS)
+
+Escenario de produccion: la app corre con **Gunicorn** detras de **Nginx** con **TLS/HTTPS**.
+
+```bash
+./scripts/generate_certs.sh    # o .\scripts\generate_certs.ps1 (Windows) -> certs/cert.pem + key.pem
+cp .env.example .env
+docker compose up -d --build   # v2 + nginx -> https://localhost (HTTP redirige a HTTPS)
+```
+
+Guia completa (certs, verificacion TLS, VM + systemd, GNS3, Let's Encrypt): **`docs/DESPLIEGUE.md`**.
+Topologia y stack tecnologico: **`docs/ARQUITECTURA.md`**.
+
 ### HTTPS/TLS (opcional)
 
 ```bash
