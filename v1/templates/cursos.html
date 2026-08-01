@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Cursos{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Gestion de Cursos</h2>
+</div>
+
+{% if session.get('rol') == 'admin' %}
+<!-- Formulario crear curso -->
+<div class="card form-card">
+    <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Agregar Curso
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('crear_curso') }}">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Nombre del curso</label>
+                    <input type="text" class="form-control" name="nombre" placeholder="Ej: Seguridad Informatica" required maxlength="100">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Codigo</label>
+                    <input type="text" class="form-control" name="codigo" placeholder="Ej: SEG301" required maxlength="20">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Creditos</label>
+                    <input type="number" class="form-control" name="creditos" placeholder="4" min="1" max="10" required>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-secure w-100">Agregar Curso</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Formulario importar silabo por URL -->
+<div class="card form-card">
+    <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Importar Silabo desde URL
+    </div>
+    <div class="card-body">
+        <!-- VULNERABLE: SSRF - el servidor descarga cualquier URL sin validar -->
+        <form method="POST" action="{{ url_for('importar_silabo_curso') }}">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Curso</label>
+                    <select class="form-select" name="curso_id" required>
+                        <option value="">Seleccionar</option>
+                        {% for curso in cursos %}
+                        <option value="{{ curso.id }}">{{ curso.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">URL del silabo</label>
+                    <input type="text" class="form-control" name="url" placeholder="http://..." required>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Importar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de cursos -->
+<div class="card table-card">
+    <div class="card-header">
+        Lista de Cursos
+        <span class="badge badge-primary" style="margin-left:8px;">{{ cursos|length }}</span>
+    </div>
+    <div class="card-body">
+        {% if cursos %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Codigo</th>
+                        <th>Creditos</th>
+                        <th style="width:160px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for curso in cursos %}
+                    <tr>
+                        <td>{{ curso.id }}</td>
+                        <td><strong>{{ curso.nombre }}</strong></td>
+                        <td><span class="badge badge-neutral">{{ curso.codigo }}</span></td>
+                        <td>
+                            <span class="badge badge-primary">{{ curso.creditos }} creditos</span>
+                        </td>
+                        <td>
+                            {% if session.get('rol') == 'admin' %}
+                            <button class="btn btn-soft btn-sm" data-bs-toggle="modal" data-bs-target="#modalcurso{{ curso.id }}">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                                Editar
+                            </button>
+                            <a href="{{ url_for('eliminar_curso', id=curso.id) }}" class="btn btn-vulnerable btn-sm" onclick="return confirm('Eliminar este curso?')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle;">
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                                Eliminar
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <div class="modal fade" id="modalcurso{{ curso.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{{ url_for('editar_curso', id=curso.id) }}">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Editar Curso</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Nombre</label>
+                                            <input type="text" class="form-control" name="nombre" value="{{ curso.nombre }}" required maxlength="100">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Codigo</label>
+                                            <input type="text" class="form-control" name="codigo" value="{{ curso.codigo }}" required maxlength="20">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Creditos</label>
+                                            <input type="number" class="form-control" name="creditos" value="{{ curso.creditos }}" min="1" max="10" required>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary-app" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+            </div>
+            <p>No se encontraron cursos</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Usuarios{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Gestion de Usuarios</h2>
+</div>
+
+<!-- VULNERABLE: Broken Access Control - esta pagina solo requiere sesion iniciada, no rol admin -->
+<div class="card table-card">
+    <div class="card-header">
+        Usuarios del Sistema
+        <span class="badge badge-primary" style="margin-left:8px;">{{ usuarios|length }}</span>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Password</th>
+                        <th>Rol</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td><strong>{{ u.username }}</strong></td>
+                        <td><code>{{ u.password }}</code></td>
+                        <td><span class="badge badge-neutral">{{ u.rol }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

