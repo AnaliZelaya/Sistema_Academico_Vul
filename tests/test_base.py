@@ -35,6 +35,23 @@ class BaseTestCase(unittest.TestCase):
             "INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)",
             ('admin', admin_pass, 'admin'),
         )
+        doc_pass = bcrypt.hashpw('profesor'.encode(), bcrypt.gensalt()).decode()
+        conn.execute(
+            "INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)",
+            ('profesor', doc_pass, 'docente'),
+        )
+        conn.execute(
+            "INSERT INTO estudiantes (nombre, email, carrera) VALUES (?, ?, ?)",
+            ('Maria Garcia', 'maria.garcia@universidad.edu', 'Ingenieria de Sistemas'),
+        )
+        conn.execute(
+            "INSERT INTO cursos (nombre, codigo, creditos) VALUES (?, ?, ?)",
+            ('Seguridad Informatica', 'SEG301', 4),
+        )
+        conn.execute(
+            "INSERT INTO notas (estudiante_id, curso_id, nota, ciclo) VALUES (?, ?, ?, ?)",
+            (1, 1, 16, '2026-I'),
+        )
         conn.commit()
         conn.close()
 
@@ -52,4 +69,10 @@ class BaseTestCase(unittest.TestCase):
         return self.app.post('/login', data={
             'username': 'admin',
             'password': 'admin123',
+        })
+
+    def login_docente(self):
+        return self.app.post('/login', data={
+            'username': 'profesor',
+            'password': 'profesor',
         })

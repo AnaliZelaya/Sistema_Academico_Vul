@@ -5,6 +5,7 @@
     <h2>Gestion de Notas</h2>
 </div>
 
+{% if session.get('rol') == 'admin' %}
 <div class="card form-card">
     <div class="card-header">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;">
@@ -49,6 +50,7 @@
         </form>
     </div>
 </div>
+{% endif %}
 
 <div class="card table-card">
     <div class="card-header">
@@ -94,11 +96,18 @@
                         <td>{{ nota.ciclo }}</td>
                         <td><span class="badge {{ badge_type }}">{{ badge_text }}</span></td>
                         <td>
-                            <a href="{{ url_for('eliminar_nota', id=nota.id) }}" class="btn btn-vulnerable btn-sm" onclick="return confirm('Eliminar esta nota?')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;">
-                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                </svg>
-                            </a>
+                            {% if session.get('rol') == 'admin' %}
+                            <form method="POST" action="{{ url_for('eliminar_nota', id=nota.id) }}" class="d-inline" onsubmit="return confirm('Eliminar esta nota?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-vulnerable btn-sm">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;">
+                                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="badge badge-neutral">Solo lectura</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

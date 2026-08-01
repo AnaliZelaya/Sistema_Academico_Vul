@@ -8,5 +8,6 @@ dist/
 build/
 .pytest_cache/
 security.log
+certs/
 static/uploads/*
 !static/uploads/.gitkeep

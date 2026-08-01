@@ -20,8 +20,18 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(32).hex())
 
+# CORRECCION: Hardening de la cookie de sesion
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('HTTPS', 'off').lower() == 'on'
+
 # CORRECCION: Proteccion CSRF en todos los formularios POST/PUT/PATCH/DELETE
 csrf = CSRFProtect(app)
+# CORRECCION: Desactivar WTF_CSRF_SSL_STRICT (chequeo de Referer de Flask-WTF).
+# Con HTTPS activo y SameSite=Lax, la validacion del token sincronizador ya
+# protege contra CSRF; el chequeo de Referer rompe clientes legimitimos que no
+# envian Referer (curl, Burp Suite, scripts, API clients usados en las guias).
+app.config['WTF_CSRF_SSL_STRICT'] = False
 
 # CORRECCION: Rate limiting para mitigar fuerza bruta en login
 limiter = Limiter(get_remote_address, app=app, storage_uri="memory://")
@@ -112,6 +122,20 @@ def login_required(f):
     return decorated
 
 
+# CORRECCION: Control de acceso basado en roles (A01 - Broken Access Control)
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Debe iniciar sesion', 'warning')
+            return redirect(url_for('login'))
+        if session.get('rol') != 'admin':
+            logger.warning(f"Acceso denegado (403): rol {session.get('rol')} intento acceder a {request.path}")
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
+
+
 @app.after_request
 def set_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -121,6 +145,27 @@ def set_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     return response
+
+
+# CORRECCION: Paginas de error personalizadas (A05 - no exponer trazas)
+@app.errorhandler(400)
+def error_400(e):
+    return render_template('errors/400.html'), 400
+
+
+@app.errorhandler(403)
+def error_403(e):
+    return render_template('errors/403.html'), 403
+
+
+@app.errorhandler(404)
+def error_404(e):
+    return render_template('errors/404.html'), 404
+
+
+@app.errorhandler(500)
+def error_500(e):
+    return render_template('errors/500.html'), 500
 
 
 @app.route('/')
@@ -214,6 +259,7 @@ def estudiantes():
 
 @app.route('/estudiantes/crear', methods=['POST'])
 @login_required
+@admin_required
 def crear_estudiante():
     nombre = request.form.get('nombre', '').strip()
     email = request.form.get('email', '').strip()
@@ -239,6 +285,7 @@ def crear_estudiante():
 
 @app.route('/estudiantes/editar/<int:id>', methods=['POST'])
 @login_required
+@admin_required
 def editar_estudiante(id):
     nombre = request.form.get('nombre', '').strip()
     email = request.form.get('email', '').strip()
@@ -262,8 +309,9 @@ def editar_estudiante(id):
     return redirect(url_for('estudiantes'))
 
 
-@app.route('/estudiantes/eliminar/<int:id>')
+@app.route('/estudiantes/eliminar/<int:id>', methods=['POST'])
 @login_required
+@admin_required
 def eliminar_estudiante(id):
     conn = get_db()
     cursor = conn.cursor()
@@ -289,6 +337,7 @@ def cursos():
 
 @app.route('/cursos/crear', methods=['POST'])
 @login_required
+@admin_required
 def crear_curso():
     nombre = request.form.get('nombre', '').strip()
     codigo = request.form.get('codigo', '').strip()
@@ -320,6 +369,7 @@ def crear_curso():
 
 @app.route('/cursos/editar/<int:id>', methods=['POST'])
 @login_required
+@admin_required
 def editar_curso(id):
     nombre = request.form.get('nombre', '').strip()
     codigo = request.form.get('codigo', '').strip()
@@ -349,8 +399,9 @@ def editar_curso(id):
     return redirect(url_for('cursos'))
 
 
-@app.route('/cursos/eliminar/<int:id>')
+@app.route('/cursos/eliminar/<int:id>', methods=['POST'])
 @login_required
+@admin_required
 def eliminar_curso(id):
     conn = get_db()
     cursor = conn.cursor()
@@ -393,6 +444,7 @@ def notas():
 
 @app.route('/notas/crear', methods=['POST'])
 @login_required
+@admin_required
 def crear_nota():
     estudiante_id = request.form.get('estudiante_id', '').strip()
     curso_id = request.form.get('curso_id', '').strip()
@@ -429,8 +481,9 @@ def crear_nota():
     return redirect(url_for('notas'))
 
 
-@app.route('/notas/eliminar/<int:id>')
+@app.route('/notas/eliminar/<int:id>', methods=['POST'])
 @login_required
+@admin_required
 def eliminar_nota(id):
     conn = get_db()
     cursor = conn.cursor()
@@ -526,8 +579,9 @@ def descargar_archivo(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], safe_name, as_attachment=True)
 
 
-@app.route('/archivos/eliminar/<int:id>')
+@app.route('/archivos/eliminar/<int:id>', methods=['POST'])
 @login_required
+@admin_required
 def eliminar_archivo(id):
     conn = get_db()
     cursor = conn.cursor()
@@ -559,4 +613,11 @@ def logout():
 if __name__ == '__main__':
     init_db()
     # CORRECCION: Debug mode desactivado, host restringido
-    app.run(debug=False, host='127.0.0.1', port=5000)
+    # CORRECCION: Soporte HTTPS/TLS (A02) - certs generados por scripts/generate_certs.*
+    https_enabled = os.environ.get('HTTPS', 'off').lower() == 'on'
+    ssl_cert = os.environ.get('SSL_CERT', os.path.join(os.path.dirname(__file__), 'certs', 'cert.pem'))
+    ssl_key = os.environ.get('SSL_KEY', os.path.join(os.path.dirname(__file__), 'certs', 'key.pem'))
+    if https_enabled:
+        app.run(debug=False, host='127.0.0.1', port=5000, ssl_context=(ssl_cert, ssl_key))
+    else:
+        app.run(debug=False, host='127.0.0.1', port=5000)

@@ -40,6 +40,9 @@
                     <a class="nav-link {% if request.path.startswith('/archivos') %}active{% endif %}" href="{{ url_for('archivos') }}">
                         <span class="nav-link-icon">&#9632;</span> Archivos
                     </a>
+                    <span class="nav-link badge badge-{{ 'secure' if session.get('rol') == 'admin' else 'neutral' }}" style="font-size:12px;">
+                        {{ session.get('username', '') }} · {{ 'Admin' if session.get('rol') == 'admin' else 'Docente' }}
+                    </span>
                     <a class="nav-link text-danger" href="{{ url_for('logout') }}">
                         <span class="nav-link-icon">&#9679;</span> Salir
                     </a>

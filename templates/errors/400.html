@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}400 - Solicitud Invalida{% endblock %}
+{% block content %}
+<div class="text-center" style="margin-top:80px;">
+    <h1 style="font-size:72px;font-weight:700;color:var(--primary);">400</h1>
+    <p style="font-size:18px;color:var(--text-secondary);">Solicitud invalida (posible intento de CSRF o datos malformados).</p>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Volver al inicio</a>
+</div>
+{% endblock %}
