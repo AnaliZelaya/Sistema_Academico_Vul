@@ -27,6 +27,11 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(32).hex())
 
+@app.route('/static/uploads/<path:filename>')
+def static_uploads_blocked(filename):
+    abort(404)
+
+
 # CORRECCION: Hardening de la cookie de sesion
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'

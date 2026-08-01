@@ -58,7 +58,9 @@ services:
   # La evidencia (.csv/.log) queda en ./docs/sqlmap_evidence (montado en /out).
   # ---------------------------------------------------------------------------
   sqlmap:
-    image: sqlmapproject/sqlmap:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.sqlmap
     container_name: sistema_sqlmap
     profiles: ["attack"]
     depends_on:

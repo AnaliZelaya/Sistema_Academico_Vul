@@ -94,7 +94,10 @@ class UploadWebrootTest(BaseTestCase):
         finally:
             ruta = os.path.join(upload_folder, guardado)
             if os.path.exists(ruta):
-                os.remove(ruta)
+                try:
+                    os.remove(ruta)
+                except PermissionError:
+                    pass
 
 
 if __name__ == '__main__':
