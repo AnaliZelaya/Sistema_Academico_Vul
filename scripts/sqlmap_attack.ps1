@@ -62,8 +62,8 @@ Write-Host "[2/3] Obteniendo sesion V1 (admin/admin123)"
      -d "username=admin" -d "password=admin123"
 
 $SessionCookie = (Get-Content $SessionFile |
-    Where-Object { -not $_.StartsWith("#") -and $_ -match "`tsession`t" } |
-    ForEach-Object { ($_ -split "`t")[6] } |
+    Where-Object { $_ -match "`tsession`t" } |
+    ForEach-Object { [regex]::Match($_, 'session\t(\S+)').Groups[1].Value } |
     Select-Object -First 1)
 
 if ([string]::IsNullOrEmpty($SessionCookie)) {

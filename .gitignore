@@ -11,3 +11,4 @@ build/
 security.log
 certs/
 uploads/
+docs/sqlmap_evidence/**/session.sqlite*
